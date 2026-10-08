@@ -8,7 +8,7 @@ cli-cursor	rules/always-on-core.mdc	6823
 cli-opencode	AGENTS.md	7085
 lead	agent-listing	1602
 lead	hooks/always-on-core.md	6044
-lead	session-path	70839
+lead	session-path	70895
 lead	session-start	6283
 lead	skill-listing	3612
 lead	skills/check-work/SKILL.md	5647
@@ -68,7 +68,7 @@ lead	skills/write-plan/templates/plan-template.md	5242
 lead	skills/write-prototype/SKILL.md	5766
 lead	skills/write-prototype/references/logic.md	3023
 lead	skills/write-prototype/references/ui.md	4652
-lead	skills/write-spec/SKILL.md	10943
+lead	skills/write-spec/SKILL.md	10999
 lead	skills/write-spec/examples/spec-examples.md	8084
 lead	skills/write-spec/references/approaches.md	1267
 lead	skills/write-spec/references/chart-work.md	5414
