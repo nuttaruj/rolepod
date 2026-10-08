@@ -8,7 +8,7 @@ cli-cursor	rules/always-on-core.mdc	6823
 cli-opencode	AGENTS.md	7085
 lead	agent-listing	1602
 lead	hooks/always-on-core.md	6044
-lead	session-path	70563
+lead	session-path	70839
 lead	session-start	6283
 lead	skill-listing	3612
 lead	skills/check-work/SKILL.md	5647
@@ -28,7 +28,7 @@ lead	skills/debug-issue/templates/hypothesis-ledger.md	1340
 lead	skills/deepen-codebase/SKILL.md	7243
 lead	skills/deepen-codebase/references/explorer-lens.md	2014
 lead	skills/deepen-codebase/references/html-report.md	5959
-lead	skills/finish-work/SKILL.md	12926
+lead	skills/finish-work/SKILL.md	13202
 lead	skills/finish-work/examples/finish-examples.md	3265
 lead	skills/finish-work/references/ci-triage.md	3793
 lead	skills/finish-work/templates/finish-menu.md	2363

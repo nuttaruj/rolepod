@@ -68,6 +68,7 @@ Done when: the menu size and the cleanup owner are known.
 
 Fill `templates/finish-menu.md` (no template → gate status, Rulings made, options, follow-ups carried, recommendation, awaiting authorization for).
 - Rulings made, shown before the menu: every `Ruling:` line in this work's receipts, each with what it costs if the ruling is wrong; a parked BLOCKER on a high-risk path is the user's call here, at ship, never mid-plan.
+- A high-risk path in the diff whose review ran no security lens (Lite) → one menu line, in your own words: a security audit (`security-review`) or an adversarial pass (`adversarial-review`) runs before the pick if the user asks. An offer, never a gate; never asked mid-plan.
 - A follow-up the Lead can close now (a one-line fix, a command, work inside the approved spec) → closed before the menu; in-spec work → a new task through `orchestrating-plans`. Only a follow-up outside the spec or a user decision (money / auth / new scope) is carried, as a question.
 - Each carried line lands in the project's one follow-up list — its issue tracker, else `docs/rolepod/backlog.md` — one line per item pointing at its plan or commit; a line this branch closed leaves that list in the same pass.
 - State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state the gate status plus the single action and act.
