@@ -50,6 +50,11 @@ Done when: every axis your lens covers has run and each claimed behavior is trac
 <Omit when clean. Severity ordered; each keeps severity, file:line, axis, issue, impact and fix direction.>
 - `file:line` — BLOCKER|MAJOR|MINOR — <axis> — <issue> — <impact> — <fix direction>
 
+- BLOCKER — fix before merge: a failure walked through the code that loses data, breaks security or permissions, moves money wrong or cannot be rolled back, or a behavior the spec requires that is missing or wrong.
+- MAJOR — fix before merge or push back; only a pre-existing MAJOR may be parked in Follow-ups with its reason: wrong or missing behavior that has a workaround or a narrow reach, a broken written project rule (cite its line), a measured performance regression, a test that does not prove what it claims, or a structure that will breed bugs.
+- MINOR — the author's call; it never opens a re-check or stops a merge: no behavior change and no written rule broken (readability, naming, style, taste). A nit is a MINOR.
+- A pushback on a BLOCKER or MAJOR closes only when the re-check holds it; an issue on a path the diff does not touch goes to Follow-ups at any level. A skill's own grading rule (the security grade, the adversarial Severity under doubt) sets the level for the findings it covers.
+
 ## Questions
 <Omit when none. A question needs the author's answer, not a fix.>
 - `file:line` — <question>
@@ -66,7 +71,7 @@ Done when: every axis your lens covers has run and each claimed behavior is trac
 APPROVED | APPROVED-WITH-NITS | REJECTED | PARTIAL | BLOCKED — <one-line reason>
 ```
 
-- BLOCKER must fix · MAJOR should fix · MINOR; the author writes the fix.
+- Grade each finding by the levels in the report's Findings section; the first two rules below override them; the author writes the fix.
   - The same pattern repeats in 3+ files (2 on simplify-code's high-risk list) enforcing the SAME rule and is not centralized → BLOCKER; look-alike text under a different contract stays separate.
   - A new abstraction with one caller and no spec / plan line asking for it (an agreed seam, a planned second caller) → MAJOR, naming its cost (the indirection a reader walks, a parameter or interface nothing varies); no cost to name → MINOR.
   - An adjacent file is failing tests on main → flag it in the report, do not block this diff for that.

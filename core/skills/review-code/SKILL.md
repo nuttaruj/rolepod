@@ -35,7 +35,7 @@ Done when: every axis your lens covers has run and each claimed behavior is trac
 {{INCLUDE: core/fragments/review-report.md}}
 ```
 
-- BLOCKER must fix · MAJOR should fix · MINOR; the author writes the fix.
+- Grade each finding by the levels in the report's Findings section; the first two rules below override them; the author writes the fix.
   - The same pattern repeats in 3+ files (2 on simplify-code's high-risk list) enforcing the SAME rule and is not centralized → BLOCKER; look-alike text under a different contract stays separate.
   - A new abstraction with one caller and no spec / plan line asking for it (an agreed seam, a planned second caller) → MAJOR, naming its cost (the indirection a reader walks, a parameter or interface nothing varies); no cost to name → MINOR.
   - An adjacent file is failing tests on main → flag it in the report, do not block this diff for that.
