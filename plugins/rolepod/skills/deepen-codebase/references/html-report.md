@@ -2,7 +2,7 @@
 
 The page is not self-contained: Tailwind and Mermaid come from CDNs, which means outside scripts execute on a page containing repo paths and source code. Mermaid suits graph-shaped diagrams; hand-built divs and inline SVG suit the more editorial ones (mass diagrams, cross-sections). Mermaid everywhere looks generic.
 
-When the network is locked down, offline, or the user wants no third-party script, skip both CDNs: embed the CSS and draw the diagrams as SVG by hand. The six card fields must read with no script at all. Either way, fonts are the scaffold's CSS stacks and never another face.
+When the network is locked down, offline, or the user wants no third-party script, skip both CDNs: embed the CSS and draw the diagrams as SVG by hand. The six candidate card fields must read with no script at all. Either way, fonts are the CSS stacks in "Building the page" and never another face.
 
 ## Building the page
 
@@ -41,13 +41,13 @@ When the network is locked down, offline, or the user wants no third-party scrip
 
 ## Top of the page
 
-Title with the repo name and scan date, followed by a key: a box symbol = module, dashed line = seam, red line = leakage, dark fill = deep module. Jump straight into the proposals. No introduction section.
+Title with the repo name and scan date, followed by a key: a box symbol = module, dashed line = seam, red line = leakage, dark fill = deep module. Jump straight into the candidate cards. No introduction section.
 
 ## Candidate card
 
-Each card proposes one refactoring. The diagram is the main argument; text should be sparse and exact.
+Render each candidate as its own `<article>` element, one per deepening it proposes. The diagram is the main argument; text should be sparse and exact.
 
-Every card contains exactly six fields:
+Every candidate card contains exactly six fields:
 
 - **Files** — a monospaced list, `font-mono text-sm`.
 - **Problem** — one sentence.
@@ -62,10 +62,11 @@ Diagrams must be clear on their own. If yours needs an explanation paragraph, it
 
 ## Visual patterns to choose from
 
-Pick the one that conveys your change most clearly. Mixing different types in one report prevents monotony.
+Per candidate card, pick the pattern that shows its change best, and vary patterns across the report; identical diagrams hide what differs between candidates.
 
-**Dependency graph** — showing upstream/downstream relationships.
-The workhorse for dependencies and call flow: X calls Y calls Z, and the mess shows. Render with Mermaid inside a styled card so it does not look pasted in. Leakage edges go red; the deep module is filled dark. For "before: 6 round-trips; after: 1", use a sequence diagram.
+**Dependency graph**
+
+Use it for call flow and upstream/downstream links. Render with Mermaid inside a styled container that matches the card. Leakage edges go red; the deep module is filled dark. For "before: 6 round-trips; after: 1", use a sequence diagram.
 
 ```html
 <div class="rounded-lg border border-slate-200 bg-white p-4">
@@ -80,17 +81,21 @@ The workhorse for dependencies and call flow: X calls Y calls Z, and the mess sh
 </div>
 ```
 
-**Drawn boundaries** — hand-built with divs and SVG lines.
-Modules are bordered, labelled `<div>`s; arrows are inline SVG `<line>` or `<path>` elements placed absolutely over a relative container. Use it when the graph layout fights you, and when the after-state should read as a single heavy-outlined deep module whose internals are dimmed.
+**Drawn boundaries**
 
-**Cross-section** — showing layered shallowness.
-Stacked horizontal bands (`h-12 border-l-4`), one per layer a call crosses. Before: six thin bands, each doing nothing. After: one thick band carrying a label for the merged responsibility.
+Use it when a graph layout fights you, or the after-state is one heavy-outlined deep module with dimmed internals. Modules are bordered, labelled `<div>`s; arrows are inline SVG `<line>` or `<path>` elements, absolutely positioned over a `position: relative` container.
 
-**Mass diagram** — for an interface as wide as its implementation.
-Two rectangles per module: interface surface and implementation. Before: interface almost matches implementation in height (shallow). After: a short interface over a tall implementation (deep).
+**Cross-section**
 
-**Call-graph collapse** — consolidating a deep call hierarchy.
-Before: calls drawn as boxes inside boxes. After: that tree folded into a single box, with the calls that became internal faded within.
+Use it for layered shallowness: horizontal bands (`h-12 border-l-4`), one per layer a call crosses. Before: six thin bands. After: one thick band labelled with the merged responsibility.
+
+**Mass diagram**
+
+Use it when an interface is nearly as wide as its implementation: two rectangles per module, interface and implementation. Before: similar heights (shallow). After: a short interface over a tall implementation (deep).
+
+**Call-graph collapse**
+
+Use it when a deep call hierarchy is consolidated. Before: boxes inside boxes. After: one box, the now-internal calls faded within.
 
 ## Design discipline
 
@@ -99,7 +104,7 @@ Before: calls drawn as boxes inside boxes. After: that tree folded into a single
 - Hold diagrams near 320px high, so the before and after pair fits on screen unscrolled.
 - Inside diagrams, render text as `text-xs uppercase tracking-wider` — it should look like an architectural sketch, not a live interface.
 - Otherwise the report is static: it carries no app code and nothing interactive except what the diagram library itself renders.
-- Escape special characters in file names and code paths (`&`, `<`, `>`, quotes). In Mermaid, wrap node labels: `A["name"]`.
+- HTML-escape all repo text you quote into the page (paths, identifiers, code snippets) before it enters the page (`&`, `<`, `>`, quotes), because third-party scripts load there. In Mermaid, wrap node labels: `A["name"]`.
 
 ## Bugs found on the way
 

@@ -14,7 +14,7 @@ Before any code, write one paragraph at the top of the page: which state model t
 
 Write your logic (the reducer, state machine, pure functions, or class) in a single `<script>` block. Keep it portable and pure — no DOM touching, no `document`, no wired-up handlers. The page calls your logic; your logic doesn't reach back into the page. The page is throwaway; the logic is the design you're testing.
 
-Pick the shape that matches what you're testing:
+Pick the shape that matches the question you are testing, never the one that is simplest to hook up to a page:
 
 - Pure reducer (`(state, action) => state`) — good for discrete events and single values.
 - State machine with explicit legal transitions — good when "what's allowed right now?" matters.

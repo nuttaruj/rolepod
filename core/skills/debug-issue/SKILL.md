@@ -15,7 +15,7 @@ Two repros come from another role first; each is your failing test:
 
 ### 1. Read the error
 
-- Gather the exact error (literal quote), its throw site (file:line), the stack (no exception: actual vs expected), where it shows, when it started failing (last green commit, deploy, data event) and the failing command. The real cause often sits mid-stack.
+- Gather the exact error (literal quote), its throw site (file:line), the stack (no exception: actual vs expected), where it shows, when it started failing (last green commit, deploy, data event), the diff since the last green and the failing command. The real cause often sits mid-stack.
 - Redact every secret you show (`<REDACTED>`); drive the loop from env vars so no credential reaches the transcript.
 
 Done when: the literal error, throw site and stack (or actual vs expected) are captured, before any edit.
@@ -27,7 +27,7 @@ One command that fails on every run: `pytest path/test_x.py::name -v`, the exact
 - Red → minimise: cut inputs, callers, config and steps one at a time, re-running each time, until all that is left is load-bearing. That repro becomes step 6's test.
 - Intermittent → raise the failure rate to 50%+ first (loop the trigger, add stress, inject sleeps); a 1% flake is not yet debuggable. The repro is then ONE command running the trigger N times (N ≥ 10), red when any run fails; record N, the rate and the conditions (order, load, seed, clock) in the ledger's Repro. Green = all N runs passing. Likely causes → `references/flake-triage.md`; no `references/flake-triage.md` → this loop is the whole recipe.
 - Red only in CI, or no local repro → reproduce in CI / staging; red only locally → diff the two environments (env vars, locale, services, versions).
-- No repro after 30 minutes → expand the repro environment once; still none → return `BLOCKED` with what you tried and its evidence (run alone → hand the user that and stop).
+- No repro after 30 minutes → expand the repro environment once; still none → return `BLOCKED` with what you tried and its evidence (run alone → hand the user what you tried and its evidence, and stop).
 
 A UI / browser bug, a WordPress bug, or sibling-plugin evidence under `.rolepod/evidence/` → `references/repro-backends.md`; no `references/repro-backends.md` → the first browser tool connected (none → describe the candidate repro for the user to confirm), or `wp-content/debug.log` for WordPress.
 

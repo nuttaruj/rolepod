@@ -69,7 +69,7 @@ A conflict with an ADR is a marked callout on the card, raised only when the fri
 After the cards, **Bugs found on the way** — one row each: `path:line` · what breaks · reproduced / read only · → `debug-issue`. A bug is never a card.
 The report ends with **Top recommendation** — which card first and why; only a `Strong` or `Worth exploring` card qualifies.
 No such card → the report states `No deepening worth doing in <scope>` with the areas walked and not reached, and has no Top recommendation. That is a complete result; never promote a `Speculative` card to fill the slot.
-Scaffold and drawing patterns → `references/html-report.md`; absent, a plain page with the six fields per card is the report.
+Page building and visual patterns → `references/html-report.md`; absent, a plain page with the six fields per card is the report.
 
 Done when: the file is written, opened, and its path printed.
 

@@ -20,7 +20,7 @@ Before choosing B, ask once more whether a host page exists: an empty page hides
 
 N rules: default 3; 2 for a two-way question; 1 when the user already named the layout to test (then no switcher; step 3 says what to render); cap at 5, because past that the variants stop being different and turn into noise.
 
-Write the plan as one line in the prototype's location, naming the route and the spike branch:
+Write the plan as one line in the prototype's location, naming the route and the spike branch. Do this whether or not the user is present to push back: the one-line plan is what lets them correct course later. For example:
 
 > "Three variants of the settings page on the existing `/settings` route, switched by `?variant=`, built on `spike/settings-layout`."
 

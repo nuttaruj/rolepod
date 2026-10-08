@@ -389,7 +389,7 @@ elif selftest:
 # total line; no prices — not a cost). Usage counts once per API call (message.id).
 # Source: Claude Code subagent transcripts under ~/.claude/projects/<key>/
 # <session>/subagents/{workflows/<wf>/,}agent-*.jsonl; <key> = repo root with
-# "/" replaced by "-". Read-only. Measured need (the readiness audit):
+# "/" replaced by "-". Read-only. Measured need (a user project's readiness audit):
 # 57 subagents with a model = 44 opus + 13 fable + 0 sonnet — visible nowhere in the
 # phase-log, which only records the script's declared tiers.
 import glob, time
