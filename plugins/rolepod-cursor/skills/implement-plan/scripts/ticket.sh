@@ -213,6 +213,39 @@ function task_title(s,    t) {
   sub(/[[:space:]]+$/, "", t)
   return t
 }
+# The one home of the Blocked-by rule (plan-lint.sh carries the same function
+# as blockedrefs): the asides off (`( ... )`, a trailing dash aside, anything
+# from the first `;`), then ONLY the leading list of task refs — a first
+# `(Task|Tasks|T)N`, then items `N`, `(Task ?|T)N` or a range `N-M`, joined by
+# `,`, `and`, `&`, `+` or the Thai "and" (octal bytes, portable to BSD awk).
+# Stops at the first token outside that shape. Returns the ids, space-joined.
+function blocked_ids(v,    out, first, item, s0, lo, hi, k, th) {
+  th = "\340\271\201\340\270\245\340\270\260"
+  gsub(/\([^)]*\)/, "", v)
+  sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
+  sub(/;.*$/, "", v)
+  sub(/^[[:space:]]+/, "", v)
+  out = ""; first = 1
+  while (1) {
+    if (first) { if (!match(v, /^(Tasks? ?|T)[0-9]+(-[0-9]+)?/)) break }
+    else if (!match(v, /^(Tasks? ?|T)?[0-9]+(-[0-9]+)?/)) break
+    item = substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH)
+    sub(/^(Tasks? ?|T)/, "", item)
+    k = index(item, "-")
+    if (k == 0) out = out (out == "" ? "" : " ") item
+    else {
+      lo = substr(item, 1, k - 1) + 0; hi = substr(item, k + 1) + 0
+      if (hi < lo || hi - lo > 999) hi = lo
+      for (k = lo; k <= hi; k++) out = out (out == "" ? "" : " ") k
+    }
+    first = 0
+    s0 = v
+    sub(/^[[:space:]]*,[[:space:]]*/, "", v)
+    sub("^[[:space:]]*(&|\\+|and[[:space:]]|" th ")[[:space:]]*", "", v)
+    if (v == s0) break
+  }
+  return out
+}
 '
 
 usage() {
@@ -589,34 +622,20 @@ find_owner_agent() { # $1 = base root, $2 = worktree (absolute)
 
 # One row per task: "<id>\t<owner>\t<blocked-ids-csv>\t<done 0|1>" — done
 # means no remaining `- [ ]` inside the task's own block (`ticket log` flips
-# every one to `- [x]`). A `(...)` aside on a Blocked-by reference (real
-# plans annotate each blocker, e.g. "Task 1 (`start` exists), Task 3 (...)")
-# is stripped per-reference, not from the first "(" to end of line — that
-# would drop every reference after the first blocker's own aside. A trailing
-# em/en-dash aside with no parens is stripped too, the same as parenthesised
-# ones. plan-lint.sh's own (advisory-only) Blocked-by graph check now uses
-# the identical two-step strip (T2 follow-up) — the two parsers agree on
-# every ref shape either one is asked to read.
+# every one to `- [x]`). The Blocked-by refs come from blocked_ids (TASK_FN):
+# the leading task list only, never other numbers in the prose. plan-lint.sh
+# carries the identical rule as blockedrefs — the two parsers agree on every
+# ref shape.
 plan_task_rows() { # $1 = plan (absolute)
   awk -v fs="$ROW_FS" "$FENCE_FN$TASK_FN"'
     { if (fenceline($0)) next }
     function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
     function flush() {
       if (id == "") return
-      bv = B
-      gsub(/\([^)]*\)/, "", bv)
-      # then a trailing em/en-dash aside (no parens) — "Task 3 — landed in
-      # v2.90.0" must resolve to {3}, not pick up 2/90/0 out of the prose —
-      # mirrors the two-step strip plan-lint.sh now uses (T2 follow-up).
-      sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", bv)
       blist = ""
-      low = tolower(trim(bv))
+      low = tolower(trim(B))
       if (low != "" && low !~ /^(none|—|-|–)/) {
-        rem = bv
-        while (match(rem, /[0-9]+/)) {
-          r = substr(rem, RSTART, RLENGTH); rem = substr(rem, RSTART + RLENGTH)
-          blist = (blist == "" ? r : blist "," r)
-        }
+        blist = blocked_ids(B); gsub(/ /, ",", blist)
       }
       # A task with NO checkbox at all (every field a bare "- **Label:**"
       # bullet, a shape the Command check above also accepts) is not

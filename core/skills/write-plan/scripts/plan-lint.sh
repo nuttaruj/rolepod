@@ -229,13 +229,39 @@ function fieldbody(line, name) {
   sub("^[[:space:]]*[-*][[:space:]]*(\\[[ xX]\\][[:space:]]*)?\\**" name "\\**:\\**[[:space:]]*", "", line)
   return line
 }
-# A Blocked-by value cut down to its refs: every `(...)` aside, then a
-# trailing em/en-dash aside, so "Task 1 (why), Task 3 — landed in v2.90.0"
-# leaves only the refs. Callers pull the integers out of the result.
-function blockedrefs(v) {
+# The one home of the Blocked-by rule (ticket.sh carries the same function as
+# blocked_ids): the asides off (`( ... )`, a trailing dash aside, anything from
+# the first `;`), then ONLY the leading list of task refs — a first
+# `(Task|Tasks|T)N`, then items `N`, `(Task ?|T)N` or a range `N-M`, joined by
+# `,`, `and`, `&`, `+` or the Thai "and" (octal bytes, portable to BSD awk).
+# Stops at the first token outside that shape. Returns the ids, space-joined;
+# callers pull the integers out of the result.
+function blockedrefs(v,    out, first, item, s0, lo, hi, k, th) {
+  th = "\340\271\201\340\270\245\340\270\260"
   gsub(/\([^)]*\)/, "", v)
   sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
-  return v
+  sub(/;.*$/, "", v)
+  sub(/^[[:space:]]+/, "", v)
+  out = ""; first = 1
+  while (1) {
+    if (first) { if (!match(v, /^(Tasks? ?|T)[0-9]+(-[0-9]+)?/)) break }
+    else if (!match(v, /^(Tasks? ?|T)?[0-9]+(-[0-9]+)?/)) break
+    item = substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH)
+    sub(/^(Tasks? ?|T)/, "", item)
+    k = index(item, "-")
+    if (k == 0) out = out (out == "" ? "" : " ") item
+    else {
+      lo = substr(item, 1, k - 1) + 0; hi = substr(item, k + 1) + 0
+      if (hi < lo || hi - lo > 999) hi = lo
+      for (k = lo; k <= hi; k++) out = out (out == "" ? "" : " ") k
+    }
+    first = 0
+    s0 = v
+    sub(/^[[:space:]]*,[[:space:]]*/, "", v)
+    sub("^[[:space:]]*(&|\\+|and[[:space:]]|" th ")[[:space:]]*", "", v)
+    if (v == s0) break
+  }
+  return out
 }
 # Every path on a Files value into out[1..n] (returns n): backticked spans
 # first, then bare comma/space-separated tokens that look like a path (a slash,
@@ -273,7 +299,10 @@ function tslug(x,   t, n, a, k, o, w) {
   return (o == "") ? "track" : o
 }
 function addrefs(c, v) {
-  v = blockedrefs(v)
+  # the raw value (and its wrapped lines) is re-parsed whole each time, so a
+  # continuation line never starts a list of its own
+  braw[c] = (c in braw ? braw[c] " " : "") v
+  v = blockedrefs(braw[c]); refs[c] = ""
   while (match(v, /[0-9]+/)) { refs[c] = refs[c] " " substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH) }
 }
 function addfile(p, c) {
@@ -859,7 +888,7 @@ if [ "${1:-}" = "--brief" ]; then
       ownsec = ($0 ~ /^## File ownership/) ? 1 : 0
       dnsec = ($0 ~ /^## Do-not-touch list/) ? 1 : 0
       sisec = ($0 ~ /^## Shared interfaces/) ? 1 : 0
-      sicont = 0
+      sicont = 0; cid = ""
       next
     }
     # Shared interfaces: a label line opening with an id C<n> starts an entry

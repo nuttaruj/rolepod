@@ -3571,6 +3571,46 @@ if [ "$CMSEC" = "$CMWANT" ]; then
   echo "  ✓ --brief: a multi-line C<n> entry keeps every line; one-line and before-heading entries unchanged"
 else echo "  ✗ --brief multi-line canonical entry: $CMSEC"; fail=$((fail+1)); fi
 
+# A `> ` line before the first label of a LATER Shared-interfaces section must
+# not attach to the previous section's last id (cid resets at a heading).
+cat > "$TMP/cr-plan.md" <<'EOF'
+# Canon Reset Plan
+
+## Tasks
+### Task 1: quote reset
+- Delivers: reset
+- Blocked by: none
+- Files: `src/a.sh`
+- Owner: devops-sre
+- Change: apply C1.
+- Test / evidence: none
+- Command: `true`
+- Done when: ok
+
+## Failure policy
+Default: stop.
+EOF
+cat > "$TMP/cr-contract.md" <<'EOF'
+# Canon reset contract
+
+## Shared interfaces
+C1 (Task 1):
+> The real rule.
+
+## Notes
+Prose.
+
+## Shared interfaces
+> stray quote before any label
+C2 (Task 9):
+> Other rule.
+EOF
+CRSEC=$(bash "$LINT" --brief 1 "$TMP/cr-plan.md" "$TMP/cr-contract.md" 2>/dev/null | awk '/^## Canonical sentences/{f=1;next} /^## /{f=0} f')
+if [ "$CRSEC" = "C1:
+> The real rule." ]; then
+  echo "  ✓ --brief: a > line before the first label of a later Shared-interfaces section stays out of the previous id"
+else echo "  ✗ --brief stray quote attached to the previous id: $CRSEC"; fail=$((fail+1)); fi
+
 # ── Tracks (worktree-track spec): ## Tracks + **Track:** ────────────────
 mk_tracks_plan() { # $1 = file; $2 = Task 3 Files; $3 = Task 3 Blocked by; $4 = Task 4 Blocked by; $5 = Task 2 Track
   cat > "$1" <<EOF

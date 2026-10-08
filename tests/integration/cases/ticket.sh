@@ -481,6 +481,51 @@ if [ "$S_RC" -eq 0 ] && [ "$(printf '%s\n' "$S_OUT" | sed -n '1p')" = "0/3 done 
 else
   echo "  ✗ status block wrong (rc=$S_RC): $S_OUT"; fail=$((fail+1))
 fi
+# Blocked-by reads the leading task list only (F1): one fixture, both parsers
+# — ticket.sh status (waits on) and plan-lint's graph (an unresolved ref is
+# reported by number) — so they cannot drift. Lines 2-4 are real shapes that
+# parsed wrong; 5-10 must keep working.
+BPLAN="$TMP/blockedby-plan.md"
+{
+  echo "# Blocked-by Plan"; echo; echo "## Tasks"; echo
+  n=0
+  while IFS= read -r bl; do
+    n=$((n+1))
+    printf '### Task %s: t%s\n- **Blocked by:** %s\n- [ ] **Files:** `f%s.txt`\n- [ ] **Command:** `true`\n\n' "$n" "$n" "$bl" "$n"
+  done <<'EOF'
+none
+Task 1 และรอบรีวิวตามกติกาข้อ 77 ปิดแล้ว
+Task 1, Task 2 ; ชุด pin A1 / A99 / B
+Task 1-3
+Task 1, 2, 3
+T3
+Task 1 (why 88), Task 3
+Task 4 and 5 & 6 + 7
+none — reason 55
+EOF
+  printf '### Task 10: t10\n- **Blocked by:** Task 1,\n  Task 2\n- [ ] **Files:** `f10.txt`\n- [ ] **Command:** `true`\n\n'
+  printf '## Parallel layout\nSequential — one owner.\n\n## Failure policy\nDefault: stop.\n'
+} > "$BPLAN"
+BP_OUT=$(bash "$TICKET" status "$BPLAN" 2>&1)
+BP_WANT="- Task 1 — t1: todo
+- Task 2 — t2: waits on 1
+- Task 3 — t3: waits on 1, 2
+- Task 4 — t4: waits on 1, 2, 3
+- Task 5 — t5: waits on 1, 2, 3
+- Task 6 — t6: waits on 3
+- Task 7 — t7: waits on 1, 3
+- Task 8 — t8: waits on 4, 5, 6, 7
+- Task 9 — t9: todo
+- Task 10 — t10: waits on 1, 2"
+BP_LINT=$(bash "$REPO_DIR/core/skills/write-plan/scripts/plan-lint.sh" "$BPLAN" 2>&1)
+if [ "$(printf '%s\n' "$BP_OUT" | sed -n '2,$p')" = "$BP_WANT" ] \
+  && printf '%s\n' "$BP_LINT" | grep -q 'graph resolves, no cycle (10 tasks)' \
+  && ! printf '%s\n' "$BP_LINT" | grep -q 'no such task'; then
+  echo "  ✓ Blocked by: the leading task list only (ranges, and/&/+/Thai-and joins, bare numbers) — status and plan-lint agree"
+else
+  echo "  ✗ Blocked-by parse wrong: status=[$BP_OUT] lint=[$BP_LINT]"; fail=$((fail+1))
+fi
+
 bash "$TICKET" log "$SPLAN" 1 --start >/dev/null; S_RC=$?
 S_OUT=$(bash "$TICKET" status "$SPLAN" 2>&1)
 if [ "$S_RC" -eq 0 ] && [ "$(printf '%s\n' "$S_OUT" | sed -n '1p')" = "0/3 done · 1 running" ] \
