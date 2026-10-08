@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
   "displayName": "Rolepod",
-  "version": "2.222.0",
+  "version": "2.223.0",
   "description": "Coordinated software-house team for AI coding CLIs — 4 agent types, Core 10 phase skills (1 router + 9 phase), five-phase spine (Define → Plan → Build → Review → Ship). Pre-merge gate (check-work status, CI, review reports, R4 security + adversarial pass) catches integration issues before ship. On Cursor, the always-on judgment core is delivered by an alwaysApply rule (rules/always-on-core.mdc); agents/skills/hooks load via Cursor's native plugin loader. See https://github.com/nuttaruj/rolepod.",
   "author": {
     "name": "nuttaruj"
