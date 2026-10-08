@@ -563,7 +563,7 @@ def _bare_agent_name(subagent_type: str | None) -> str:
 # that `'` as opening a string literal, flipped quote parity for the rest of the
 # script, and blanked every agent() call after it. The per-call loop then found
 # zero calls, so strong-spread / reason-spread / bare-fanout never fired
-# (observed: CourtBook coach-daily-wage, a `// tier-reason:` mentioning "Lead's
+# (observed in a user project: a `// tier-reason:` mentioning "Lead's
 # tier" silenced an 8×opus fleet). A `//` inside a string is still consumed as
 # string content, because the opening quote matches first at its own position.
 # A `/` opens a JS regex LITERAL (not division) only when the last
@@ -656,7 +656,7 @@ def _since_iso(since_epoch: float | None) -> str | None:
 
 # Newest-first cap on subagent transcripts CONTENT-scanned per gate call — a
 # never-committed repo has no window, and a long session can hold hundreds
-# of agent files (CourtBook: 293 / 127 MB). 60 newest covers any real fleet
+# of agent files (a user repo: 293 / 127 MB). 60 newest covers any real fleet
 # (Workflow concurrency caps at 16 per run).
 AGENT_TRANSCRIPT_CAP = 60
 

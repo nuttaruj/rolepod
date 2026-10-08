@@ -1350,8 +1350,8 @@ fi
 # Walk each task block on its own — an aggregate count let one task's
 # extra Commands cover for a sibling with none, and 0 tasks passed 0 >= 0.
 # 'Command:' still counts only inside task blocks (never Failure-policy prose).
-# Heading shapes: `### Task 1:` (template) and `### T1 —` (a real CourtBook
-# plan, which this lint rejected wholesale before v2.90.0). TASK_RX is set
+# Heading shapes: `### Task 1:` (template) and `### T1 —` (a real user plan
+# from a user project, which this lint rejected wholesale before v2.90.0). TASK_RX is set
 # at the top of the file — shared with --brief, not re-declared here.
 # TASKS is counted through the same fence-aware pass as MISSING, never
 # `grep -Ec` — a fenced `### Task 9` line must not inflate the count. The
