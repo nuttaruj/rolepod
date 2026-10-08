@@ -1,6 +1,6 @@
 ---
 name: finish-work
-description: Use when implementation, verification and review are done and the branch's fate is next; the user asks to merge, open a PR, keep the branch open or discard it; or a production launch needs staging.
+description: Use when build, verification and review are done and the branch's fate is next; the user asks to merge, open a PR, keep the branch or discard it; or a production launch needs staging.
 ---
 
 # Finish Work

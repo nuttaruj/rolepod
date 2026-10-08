@@ -1,6 +1,6 @@
 ---
 name: security-review
-description: The security lens's method — model the threat, walk the diff at the depth the brief names, report each BLOCKER / MAJOR with an exploit scenario. Use it directly only when the user asks for a security audit.
+description: The security lens's method — model the threat, walk the diff at the brief's depth, report each BLOCKER / MAJOR with an exploit scenario. Use directly only when the user asks for a security audit.
 ---
 
 # Security Review

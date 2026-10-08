@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: The adversarial lens's method — try to break a high-risk change and report where it fails. Use it directly only when the user asks for an adversarial review.
+description: The adversarial lens's method — try to break a high-risk change and report where it fails. Use directly only when the user asks for an adversarial review.
 ---
 
 # Adversarial Review

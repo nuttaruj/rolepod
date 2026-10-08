@@ -1,6 +1,6 @@
 ---
 name: implement-plan
-description: The owner's build procedure — build one task from its brief, an inline checklist or an R1 edit, prove it, order its review, return the receipt. Use when you are dispatched to build a task.
+description: The owner's build procedure — build one task from its brief, inline checklist or R1 edit, prove it, order its review, return the receipt. Use when you are dispatched to build a task.
 ---
 
 # Implement Plan

@@ -1,6 +1,6 @@
 ---
 name: simplify-code
-description: The owner's cleanup procedure. Use when code looks bloated, over-engineered or rotted; a refactor or cleanup is asked; a pattern repeats in 3+ places; a helper or abstraction has one use.
+description: The owner's cleanup procedure. Use when code looks bloated, over-engineered or rotted; a refactor is asked; a pattern repeats in 3+ places; a helper or abstraction has one use.
 ---
 
 # Simplify Code

@@ -1,6 +1,6 @@
 ---
 name: debug-issue
-description: The owner's debug loop (the Lead: report-only). Use when an error appears, a test or build goes red, output is wrong, something that worked stopped, or a bug recurs or moves.
+description: The owner's debug loop (the Lead: report-only). Use when an error appears, a test or build goes red, output is wrong, something that worked stopped, or a bug recurs.
 ---
 
 # Debug Issue

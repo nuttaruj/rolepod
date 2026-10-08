@@ -1,6 +1,6 @@
 ---
 name: tdd-flow
-description: The owner's red-green procedure. Use when the user asks for test-first, TDD or a failing test first; a bug must be reproduced as a test; a skill or brief calls for one failing test at a seam.
+description: The owner's red-green procedure. Use when the user asks for test-first, TDD or a failing test first; a bug must be reproduced as a test; a brief calls for one failing test at a seam.
 ---
 
 # TDD Flow

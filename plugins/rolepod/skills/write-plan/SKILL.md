@@ -1,6 +1,6 @@
 ---
 name: write-plan
-description: Use when an approved spec or a small clear goal needs an executable plan before any edit; the next step is deciding files, task order, owners and tests; or two or more agents will edit code in parallel.
+description: Use when an approved spec or small clear goal needs an executable plan before any edit; the next step is deciding files, task order, owners and tests; or two or more agents will edit in parallel.
 ---
 
 # Write Plan

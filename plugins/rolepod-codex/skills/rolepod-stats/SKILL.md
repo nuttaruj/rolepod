@@ -1,6 +1,6 @@
 ---
 name: rolepod-stats
-description: Use when user asks for rolepod stats; user wants evidence report; user seeks tier distributions; user asks for verify verdicts; user wants review outcomes; user asks which models ran
+description: Use when the user asks for rolepod stats, an evidence report, tier distributions, verify verdicts, review outcomes or which models ran
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: coordinating-parallel-tracks
-description: Use when a plan's Parallel layout names two or more tracks, a track's diff passes ~800 changed lines or ~15 files, or another session holds a live lock on the base checkout.
+description: Use when a plan's Parallel layout names two or more tracks, a track's diff passes ~800 lines or ~15 files, or another session holds a live lock on the base checkout.
 ---
 
 # Coordinating Parallel Tracks

@@ -1,6 +1,6 @@
 ---
 name: review-code
-description: The reviewer's method — walk a diff on the spec and standards axes, write the severity-ordered report, re-check a Fix-verify delta. Use when you are dispatched to review or re-check a diff.
+description: The reviewer's method — walk a diff on the spec and standards axes, write the severity-ordered report, re-check a Fix-verify delta. Use when dispatched to review or re-check a diff.
 ---
 
 # Review Code

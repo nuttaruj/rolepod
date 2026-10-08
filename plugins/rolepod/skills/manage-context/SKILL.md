@@ -1,6 +1,6 @@
 ---
 name: manage-context
-description: Use when context is heavy, stale or near a usage quota; a session resumes from a compaction or a handoff; a stated constraint was forgotten; fixes keep failing; edits spread past the plan; or the repo is unfamiliar.
+description: Use when context is heavy, stale or near a usage quota; a session resumes from a compaction or handoff; a stated constraint was forgotten; fixes keep failing; edits spread past the plan; or the repo is unfamiliar.
 ---
 
 # Manage Context

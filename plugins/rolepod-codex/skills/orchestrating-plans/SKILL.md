@@ -1,6 +1,6 @@
 ---
 name: orchestrating-plans
-description: Use when you are the Lead and an approved plan, an inline R2 checklist or a spec-as-plan R3 list is ready to run; a plan's next task is unblocked; or the user says to execute the plan — the Lead's Build procedure.
+description: The Lead's Build procedure. Use when you are the Lead and an approved plan, inline R2 checklist or spec-as-plan R3 list is ready to run; a plan's next task is unblocked; or the user says to execute the plan.
 ---
 
 # Orchestrating Plans

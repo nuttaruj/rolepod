@@ -1,6 +1,6 @@
 ---
 name: check-work
-description: Use when a change is made and before claiming it is done; finish-work's merge gate needs the full-diff block; the user asks to verify, prove or test that a change works.
+description: Use when a change is made and before claiming it is done; finish-work's merge gate needs the full-diff block; the user asks to verify or prove a change works.
 ---
 
 # Check Work
