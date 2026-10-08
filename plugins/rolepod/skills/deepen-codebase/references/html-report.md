@@ -1,12 +1,10 @@
-<!-- Adapted from mattpocock/skills improve-codebase-architecture HTML-REPORT.md (MIT). Load from deepen-codebase Report. -->
-
 # HTML Report Format
 
-The report is not self-contained: Tailwind and Mermaid load from CDNs, so third-party scripts run in a page that holds repo paths and code. Mermaid handles graph-shaped diagrams reliably; hand-built divs and inline SVG handle the more editorial visuals (mass diagrams, cross-sections). Leaning on Mermaid for everything starts to look generic.
+The page is not self-contained: Tailwind and Mermaid come from CDNs, which means outside scripts execute on a page containing repo paths and source code. Mermaid suits graph-shaped diagrams; hand-built divs and inline SVG suit the more editorial ones (mass diagrams, cross-sections). Mermaid everywhere looks generic.
 
-Offline, a locked-down network, or a user who wants no third-party script: skip the CDNs. Write inline CSS and hand-built SVG diagrams instead — the six fields must read without any script. Either way the fonts are the scaffold's CSS stacks, never another face.
+When the network is locked down, offline, or the user wants no third-party script, skip both CDNs: embed the CSS and draw the diagrams as SVG by hand. The six card fields must read with no script at all. Either way, fonts are the scaffold's CSS stacks and never another face.
 
-## Scaffold
+## Building the page
 
 ```html
 <!doctype html>
@@ -20,12 +18,11 @@ Offline, a locked-down network, or a user who wants no third-party script: skip 
       mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict" });
     </script>
     <style>
-      /* small custom layer for things Tailwind doesn't cover cleanly:
-         dashed seam lines, hand-drawn-feeling arrow heads, etc. */
+      /* extras for architectural visuals */
       .seam { stroke-dasharray: 4 4; }
       .leak { stroke: #dc2626; }
       .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
-      /* fonts — fixed: Tailwind's sans / serif / mono stacks */
+      /* standard fonts from system */
       body { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
       h1, h2 { font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
       code, pre, .files { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
@@ -33,50 +30,49 @@ Offline, a locked-down network, or a user who wants no third-party script: skip 
   </head>
   <body class="bg-stone-50 text-slate-900 font-sans">
     <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
-      <header>...</header>
-      <section id="candidates" class="space-y-10">...</section>
-      <section id="bugs">...</section>
-      <section id="top-recommendation">...</section>
+      <header><!-- title, date, legend --></header>
+      <section id="candidates" class="space-y-10"><!-- candidate cards --></section>
+      <section id="bugs"><!-- issues found --></section>
+      <section id="top-recommendation"><!-- pick one --></section>
     </main>
   </body>
 </html>
 ```
 
-## Header
+## Top of the page
 
-Repo name, date, and a compact legend: solid box = module, dashed line = seam, red arrow = leakage, thick dark box = deep module. No introduction paragraph. Straight into the candidates.
+Title with the repo name and scan date, followed by a key: a box symbol = module, dashed line = seam, red line = leakage, dark fill = deep module. Jump straight into the proposals. No introduction section.
 
 ## Candidate card
 
-The diagrams carry the weight. Prose is sparse, plain, and uses the architectural terms from the explorer-lens Vocabulary.
+Each card proposes one refactoring. The diagram is the main argument; text should be sparse and exact.
 
-Each candidate is one `<article>`, with exactly these six fields:
+Every card contains exactly six fields:
 
-- **Files** — monospaced list, `font-mono text-sm`.
+- **Files** — a monospaced list, `font-mono text-sm`.
 - **Problem** — one sentence.
 - **Solution** — one sentence.
-- **Benefits** — bullets, ≤6 words each, in locality and leverage terms, e.g. "tests hit one interface", "pricing logic stops leaking", "delete 4 shallow wrappers".
-- **Before / After** — the centrepiece. Two columns, side by side. See patterns below.
-- **Strength** — badge, one of `Strong` (emerald), `Worth exploring` (amber), `Speculative` (slate).
+- **Benefits** — short bullets (≤6 words), phrased as locality and leverage wins: "one interface to test", "pricing no longer leaks", "4 shallow wrappers removed".
+- **Before / After** — the centrepiece: a left column and a right column, drawn with the patterns below.
+- **Strength** — a badge: `Strong` (emerald), `Worth exploring` (amber), or `Speculative` (slate).
 
-Never substitute component / service / unit for module; API / signature for interface; boundary for seam; layer / wrapper for module.
+Prose takes its architectural terms from the explorer-lens Vocabulary. Swapping in component, service or unit for module is wrong, as is API or signature for interface, boundary for seam, and layer or wrapper for module.
 
-No paragraphs of explanation. If the diagram needs a paragraph to be understood, redraw the diagram.
+Diagrams must be clear on their own. If yours needs an explanation paragraph, it's not clear yet — redraw it.
 
-## Diagram patterns
+## Visual patterns to choose from
 
-Pick the pattern that fits the candidate. Mix them — making every diagram look the same defeats the point.
+Pick the one that conveys your change most clearly. Mixing different types in one report prevents monotony.
 
-### Graph (the workhorse for dependencies / call flow)
-
-Use a flowchart or graph when the point is "X calls Y calls Z, and look at the mess." Wrap it in a styled card so it doesn't feel parachuted in. Color leakage edges red and the deep module dark. Sequence diagrams work well for "before: 6 round-trips; after: 1."
+**Dependency graph** — showing upstream/downstream relationships.
+The workhorse for dependencies and call flow: X calls Y calls Z, and the mess shows. Render with Mermaid inside a styled card so it does not look pasted in. Leakage edges go red; the deep module is filled dark. For "before: 6 round-trips; after: 1", use a sequence diagram.
 
 ```html
 <div class="rounded-lg border border-slate-200 bg-white p-4">
   <pre class="mermaid">
     flowchart LR
-      A["OrderHandler"] --> B["OrderValidator"]
-      B --> C["OrderRepo"]
+      A["Handler"] --> B["Validator"]
+      B --> C["Repo"]
       C -.leak.-> D["PricingClient"]
       classDef leak stroke:#dc2626,stroke-width:2px;
       class C,D leak
@@ -84,30 +80,26 @@ Use a flowchart or graph when the point is "X calls Y calls Z, and look at the m
 </div>
 ```
 
-### Hand-built boxes-and-arrows (when the graph layout fights you)
+**Drawn boundaries** — hand-built with divs and SVG lines.
+Modules are bordered, labelled `<div>`s; arrows are inline SVG `<line>` or `<path>` elements placed absolutely over a relative container. Use it when the graph layout fights you, and when the after-state should read as a single heavy-outlined deep module whose internals are dimmed.
 
-Modules as `<div>`s with borders and labels. Arrows as inline SVG `<line>` or `<path>` elements positioned absolutely over a relative container. Reach for this when the "after" diagram should feel like one thick-bordered deep module with greyed-out internals.
+**Cross-section** — showing layered shallowness.
+Stacked horizontal bands (`h-12 border-l-4`), one per layer a call crosses. Before: six thin bands, each doing nothing. After: one thick band carrying a label for the merged responsibility.
 
-### Cross-section (good for layered shallowness)
+**Mass diagram** — for an interface as wide as its implementation.
+Two rectangles per module: interface surface and implementation. Before: interface almost matches implementation in height (shallow). After: a short interface over a tall implementation (deep).
 
-Stack horizontal bands (`h-12 border-l-4`) to show layers a call passes through. Before: 6 thin layers each doing nothing. After: 1 thick band labelled with the consolidated responsibility.
+**Call-graph collapse** — consolidating a deep call hierarchy.
+Before: calls drawn as boxes inside boxes. After: that tree folded into a single box, with the calls that became internal faded within.
 
-### Mass diagram (good for "interface as wide as implementation")
+## Design discipline
 
-Two rectangles per module: one for interface surface area, one for implementation. Before: interface rectangle nearly as tall as the implementation rectangle (shallow). After: interface rectangle short, implementation rectangle tall (deep).
-
-### Call-graph collapse
-
-Before: a tree of function calls rendered as nested boxes. After: the same tree collapsed into one box, with the now-internal calls shown faded inside it.
-
-## Style guidance
-
-- Lean editorial, not corporate-dashboard. Generous whitespace.
-- Color sparingly: one accent (emerald or indigo) plus red for leakage and amber for warnings.
-- Keep diagrams ~320px tall so before/after sits comfortably side by side without scrolling.
-- Use `text-xs uppercase tracking-wider` for module labels inside diagrams, so they read as schematic, not as UI.
-- The report is otherwise static: no app code, no interactivity beyond the diagram library's own rendering.
-- Repo text — paths, identifiers, code — is HTML-escaped (`&`, `<`, `>`, quotes) before it enters the page, and quoted inside Mermaid labels (`A["name"]`).
+- Editorial in feel, never a corporate dashboard; plenty of whitespace.
+- Spend color carefully: a single accent (emerald or indigo), red marks leakage, amber marks warnings.
+- Hold diagrams near 320px high, so the before and after pair fits on screen unscrolled.
+- Inside diagrams, render text as `text-xs uppercase tracking-wider` — it should look like an architectural sketch, not a live interface.
+- Otherwise the report is static: it carries no app code and nothing interactive except what the diagram library itself renders.
+- Escape special characters in file names and code paths (`&`, `<`, `>`, quotes). In Mermaid, wrap node labels: `A["name"]`.
 
 ## Bugs found on the way
 

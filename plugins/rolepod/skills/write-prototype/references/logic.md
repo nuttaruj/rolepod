@@ -1,43 +1,37 @@
-<!-- Adapted from mattpocock/skills prototype LOGIC.md (MIT). Load from write-prototype Pick the branch. -->
-
 # Logic Prototype
 
-A single, self-contained HTML file (a shareable demo) that lets anyone drive a state model by clicking buttons. Use this when the question is about business logic, state transitions, or data shape: the kind of thing that looks reasonable on paper but only feels wrong once it is pushed through real cases.
+An HTML file you can email around — self-contained, no server, opens in any browser — that makes a state model feel real through interaction. Use this to test whether business logic, state transitions, or data shapes work when pushed through actual scenarios instead of just on paper.
 
-Because it is one file with nothing to install, hand it to a non-developer (a designer, a PM, a domain expert) and let them feel the model for themselves. So it speaks their language — `CONTEXT.md` terms for the domain — not the code's.
+Hand it to a non-developer (domain expert, product, design) so they can feel the model themselves. It speaks their language: the terms in `CONTEXT.md` for the domain, not the code's names.
 
-## Process
+## How to build it
 
-### 1. State the question
+### 1. Name what you're testing
 
-Before writing code, write down what state model and what question this prototypes. One paragraph, at the top of the demo. A logic prototype that answers the wrong question is pure waste, so make the question explicit so it can be checked later, whether the user is watching now or returning to it AFK.
+Before any code, write one paragraph at the top of the page: which state model this is and the exact question it answers. A prototype answering the wrong question is wasted work, so state it plainly enough to check later, whether the user is watching now or returns away from the keyboard.
 
-### 2. Isolate the logic in a portable module
+### 2. Separate the logic from the page
 
-Put the actual logic (the bit answering the question) in a single `<script>` block written as a small, pure module. The page around it is throwaway; this module is the validated design.
+Write your logic (the reducer, state machine, pure functions, or class) in a single `<script>` block. Keep it portable and pure — no DOM touching, no `document`, no wired-up handlers. The page calls your logic; your logic doesn't reach back into the page. The page is throwaway; the logic is the design you're testing.
 
-The right shape depends on the question:
+Pick the shape that matches what you're testing:
 
-- A pure reducer: `(state, action) => state`. Good when actions are discrete events and state is a single value.
-- A state machine: explicit states and transitions. Good when "which actions are even legal right now" is part of the question.
-- A small set of pure functions over a plain data type. Good when there's no implicit current state, just transformations.
-- A class or module with a clear method surface when the logic genuinely owns ongoing internal state.
+- Pure reducer (`(state, action) => state`) — good for discrete events and single values.
+- State machine with explicit legal transitions — good when "what's allowed right now?" matters.
+- Plain functions over data — good when you're just transforming, not holding state.
+- Class or module with methods — good when internal state genuinely belongs together.
 
-Pick whichever shape best fits the question, not whichever is easiest to wire to a page. Keep it pure: no DOM, no `document`, no button handlers reaching inside it. The page calls into it; nothing flows the other direction.
+### 3. Write the shareable page
 
-### 3. Build the shareable HTML file
+One HTML file, everything inline. Plain CSS and JS: no framework, no bundler, no server. It opens by double-click and survives being emailed.
 
-One file, plain HTML/CSS/JS: no framework, no bundler, no server, everything inline so it opens by double-click and survives being emailed around. Anyone should be able to run it by opening it.
+Every label uses `CONTEXT.md` terms, not code terms: buttons and state read like the business, not the reducer. Explain in plain words what is happening, for someone who has never seen a state machine.
 
-Write it for a non-developer. Every label is in domain language — `CONTEXT.md` terms — not code: buttons and state read like the business, not the reducer. Explain in plain words what's happening.
+Organize top to bottom:
 
-Lay it out with a clean hierarchy, top to bottom:
+1. **Title and one line** of what to explore (your question from step 1).
+2. **Current state** — a readable panel showing every relevant field, not a JSON dump. Highlight what just changed when someone clicks.
+3. **Free-play buttons** — one per action, always clickable. Anyone can click them in any order. Each click updates and re-renders.
+4. **Scenario tabs** — a few scenarios that expose the tricky parts: the happy case, an edge that breaks reasoning, something that should fail. Each tab describes the scenario in plain language (the situation and what to watch for), then shows its steps in order as real buttons: pressing one performs that action and advances to the next step. Starting a scenario resets to a known initial state so it plays the same way every time.
 
-1. Title and one-line explanation of what this demo lets you explore (the question from step 1).
-2. Current state: the full relevant state, rendered as a readable panel (labelled fields, not a raw JSON dump), re-rendered after every click so the change is visible. Where it helps a non-developer follow, call out what just changed.
-3. Free-play buttons: one button per action, always available, so anyone can poke at the model in any order. Each click dispatches its action and re-renders the state.
-4. Guided walkthroughs: a set of scenarios, one per tab. Each tab holds a short plain-language description of the scenario (the situation it sets up and what to watch for) and underneath it, the ordered buttons to press for that scenario. Each step is a real button: clicking it performs that action and moves to the next step. Starting a walkthrough resets to a known initial state so the scenario runs the same way every time.
-
-Choose scenarios that demonstrate the awkward cases, the ones hard to reason about on paper: the happy path, a tricky edge case, an attempt at something that should be illegal.
-
-Keep it beautiful but restrained: clean typography, generous spacing, one accent colour. No animations, no gimmicks: nothing that competes with the state and the buttons.
+Keep visuals clean and restrained: clean typography, generous whitespace, one accent color. No animations fighting for attention — the point is the state and the buttons.
