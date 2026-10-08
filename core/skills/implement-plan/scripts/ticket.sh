@@ -199,6 +199,22 @@ function fence_is_open() { return infence }
 function fence_open_line() { return fenceopen }
 '
 
+# The one home of the task-heading shape (`### Task 1:`, `### Task1`,
+# `### T1 —`): every awk pass that reads task headings appends this after
+# FENCE_FN and calls these instead of spelling the regex.
+TASK_FN='
+function is_task_heading(s) { return s ~ /^### (Task ?|T)[0-9]+/ }
+function task_id(s,    id) {
+  id = s; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+  return id
+}
+function task_title(s,    t) {
+  t = s; sub(/^### (Task ?|T)[0-9]+[[:space:]]*[:.—–-]*[[:space:]]*/, "", t)
+  sub(/[[:space:]]+$/, "", t)
+  return t
+}
+'
+
 usage() {
   cat <<'EOF'
 usage:
@@ -316,9 +332,9 @@ plan_is_sequential() { # $1 = plan
 # One row per task: "<id><ROW_FS><track>" off each task's `- **Track:** X`
 # field (first one wins); a task with no Track field has no row.
 plan_task_tracks() { # $1 = plan
-  awk -v fs="$ROW_FS" "$FENCE_FN"'
+  awk -v fs="$ROW_FS" "$FENCE_FN$TASK_FN"'
     { if (fenceline($0)) next }
-    /^### (Task ?|T)[0-9]+/ { id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id); seen = 0; next }
+    is_task_heading($0) { id = task_id($0); seen = 0; next }
     /^## / { id = ""; next }
     id != "" && !seen && $0 ~ /^[[:space:]]*-([[:space:]]*\[[ xX]\])?[[:space:]]*\*\*Track:\*\*/ {
       v = $0; sub(/.*\*\*Track:\*\*[[:space:]]*/, "", v); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v)
@@ -582,7 +598,7 @@ find_owner_agent() { # $1 = base root, $2 = worktree (absolute)
 # the identical two-step strip (T2 follow-up) — the two parsers agree on
 # every ref shape either one is asked to read.
 plan_task_rows() { # $1 = plan (absolute)
-  awk -v fs="$ROW_FS" "$FENCE_FN"'
+  awk -v fs="$ROW_FS" "$FENCE_FN$TASK_FN"'
     { if (fenceline($0)) next }
     function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
     function flush() {
@@ -609,9 +625,9 @@ plan_task_rows() { # $1 = plan (absolute)
       done = (total_boxes > 0 && open_boxes == 0) ? 1 : 0
       printf "%s%s%s%s%s%s%d\n", id, fs, trim(Ow), fs, blist, fs, done
     }
-    $0 ~ /^### (Task ?|T)[0-9]+/ {
+    is_task_heading($0) {
       flush()
-      id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+      id = task_id($0)
       B = ""; Ow = ""; open_boxes = 0; total_boxes = 0; field = ""
       next
     }
@@ -668,14 +684,9 @@ EOF
 # block without writing. The block lives in the plan under `## Status`.
 # One "<id><ROW_FS><title>" row per task heading ("### Task N: title").
 plan_task_titles() { # $1 = plan (absolute)
-  awk -v fs="$ROW_FS" "$FENCE_FN"'
+  awk -v fs="$ROW_FS" "$FENCE_FN$TASK_FN"'
     { if (fenceline($0)) next }
-    /^### (Task ?|T)[0-9]+/ {
-      id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
-      t = $0; sub(/^### (Task ?|T)[0-9]+[[:space:]]*[:.—–-]*[[:space:]]*/, "", t)
-      sub(/[[:space:]]+$/, "", t)
-      printf "%s%s%s\n", id, fs, t
-    }
+    is_task_heading($0) { printf "%s%s%s\n", task_id($0), fs, task_title($0) }
   ' "$1"
 }
 
@@ -1328,12 +1339,11 @@ cmd_log() {
   tmp="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-log.XXXXXX")"
   [ -n "$tmp" ] || { echo "ticket: log: mktemp failed" >&2; exit 1; }
 
-  awk -v want="$n" "$FENCE_FN"'
+  awk -v want="$n" "$FENCE_FN$TASK_FN"'
     { if (fenceline($0)) { print; next } }
     /^### / {
-      if ($0 ~ /^### (Task ?|T)[0-9]+/) {
-        id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
-        intask = (id == want) ? 1 : 0
+      if (is_task_heading($0)) {
+        intask = (task_id($0) == want) ? 1 : 0
       }
       print; next
     }
