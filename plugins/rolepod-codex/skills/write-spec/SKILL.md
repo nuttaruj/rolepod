@@ -83,7 +83,9 @@ Done when: the critique ran, or was skipped.
 
 The spec lives under `docs/rolepod/`. Before the first save: `scripts/docs-mode.sh status` prints `undecided` → run `scripts/docs-mode.sh ignore`, then the commit it prints, and pass its user line on; `track` only on the user's yes. No script → list `docs/rolepod/` in `.gitignore`, committed alone.
 
-After the approaches round, read back to the user: the goal, the scope, and each assumption (an `(assumed)` line) from the draft. Then write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` / `-draft`). Run spec-lint, then point the user to it. Accept → `write-plan`; edit → patch and ask again; reject → stop. One gate, on the file; a spec set: all files and its map at once.
+After the approaches round, read back to the user: the goal, the scope, and each assumption (an `(assumed)` line) from the draft. Then write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` / `-draft`).
+
+Run spec-lint, then point the user to it and name, in your own words, the replies it takes: accept, edit, reject, and — while no critique has run on this spec — a second opinion from another model, for a spec too long to read through. Accept → `write-plan`; edit → patch and ask again; reject → stop; a second opinion → step 5 on the saved file, its triage folded in, then ask again. One gate, on the file; a spec set: all files and its map at once.
 
 **Spec-lint**: `grep -niE '\[\[FILL:|TODO|TBD' <spec>` must print nothing; so must the anchor check `for h in 'Non-goals' 'Current behavior' 'Desired behavior' 'Success criteria'; do grep -q "^## $h" <spec> || echo "missing ## $h"; done` (the next repeat-feature spec seeds from these four headings). A printed line or a grep error is a lint failure.
 
