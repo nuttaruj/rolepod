@@ -60,11 +60,10 @@ docs/handoffs/
 /CLAUDE.md
 /AGENTS.md
 
-# Dev tooling — the repo ships the installable payload and its docs only.
+# Dev tooling — the repo ships the installable payload, its docs, tests/ and the Makefile.
 /.codegraph/
 /.github/workflows/
-/Makefile
-/tests/
+/tests/review-fixture/
 /docs/release-checklist.md
 /scripts/bench-hooks.sh
 /scripts/bump-version.sh

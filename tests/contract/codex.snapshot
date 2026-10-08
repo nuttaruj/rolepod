@@ -1,0 +1,8 @@
+# rolepod CLI contract snapshot -- codex -- taken at 0.159.2 on 2026-09-30 from ~/.nvm/versions/node/v24.14.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex (this line is informational, not diffed)
+agents_keys: default_subagent_model default_subagent_reasoning_effort interrupt_message job_max_runtime_seconds max_depth
+collab_tools: close_agent followup_task interrupt_agent list_agents resume_agent send_input send_message spawn_agent wait_agent
+delegation_text: ExplicitRequestOnly proactive_delegation
+effort_levels: high low max medium minimal none persistent ultra xhigh
+hook_events: Interrupt PermissionRequest PostCompact PostToolUse PreCompact PreToolUse SessionEnd SessionStart Stop SubagentStart SubagentStop UserPromptSubmit
+multi_agent_v2_keys: expose_spawn_agent_model_overrides hide_spawn_agent_metadata max_concurrent_threads_per_session multi_agent_mode_hint_text subagent_developer_instructions tool_namespace
+spawn_params: agent_type fork_turns model nickname reasoning_effort task_name
