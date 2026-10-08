@@ -13,10 +13,7 @@ The repo's required checks (branch protection, CI config) decide what is require
 ## Triage a red lane
 
 A red required lane blocks the merge. Before re-running or escalating,
-triage WHY it is red — the response differs by cause. A long or multi-lane log →
-save it (`gh run view <id> --log-failed > <file>`), then one cheap `rolepod-scout`
-digest of that file (failing step, first error line, files named) before the
-table; the scout has no shell, and the fix stays with the owner below.
+triage WHY it is red — the response differs by cause.
 
 | First check | If yes | Action |
 |-------------|--------|--------|

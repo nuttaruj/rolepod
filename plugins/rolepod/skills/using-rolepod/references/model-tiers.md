@@ -12,7 +12,7 @@ A prompt role name is not native dispatch metadata or hook evidence. Keep review
 
 | Class | The set's… | Work |
 |---|---|---|
-| **cheap** | small / fast model | docs, copy, read-only sweeps and digests, mechanical builds, flow runs, command-settled checks |
+| **cheap** | small / fast model | docs, copy, read-only sweeps, mechanical builds, flow runs, command-settled checks |
 | **balanced** | mid flagship | ALL implementation, high-risk paths included — the net is the strong review floor, never the writer's tier |
 | **strong** | top reasoning model | architecture, final-pass and adversarial review. A set whose top sits below frontier-class still gets the full review; the depth cap is a recorded LIMITATION |
 | **apex** | strongest tier the CLI exposes | the adversarial pass only: an irreversible change with no rollback (destructive migration, key rotation, live money movement), a novel design with no pattern to diff against, deep cross-system reasoning (races on financial invariants, distributed consistency), or a user ask; a CLI whose strong pin is its ceiling collapses apex into strong; a costlier rung is a cost decision, so surface it first; the dispatch line's `override` records the rung sent |
@@ -21,7 +21,6 @@ Skills by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, `manage-context` and its handoff briefs, explain-only answers, release notes and changelogs.
 - cheap — every `domain: writing` task, not only pure copy.
 - cheap — a mechanical build task: a rename, config, wiring, a render or pin update, a change that copies an existing pattern; no new logic and no new test.
-- cheap — gathering before a fix: logs and CI output saved to files (the scout has no shell; the owner runs the commands) → one `rolepod-scout` digest the balanced owner works from (`debug-issue`, `finish-work` CI triage).
 - cheap — the flow run of the QA pass (open, click, observe, report); a new E2E test stays balanced.
 - cheap — a per-item verify a command or grep settles, at high effort; a judgment call stays balanced.
 - A cheap row never builds or verifies a high-risk path, and a cheap task returned rejected or `BLOCKED` twice goes balanced.
