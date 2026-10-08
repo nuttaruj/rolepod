@@ -60,7 +60,7 @@ Read the status, the first word of the decision brief:
 - An unreviewed diff → `convening-code-review` on it before you integrate; its findings go back to that owner as one fix brief.
 - Any other first word, or a question → answer it or ask for the status, then redispatch.
 
-Validate the receipt, then spot-check ONE claim (the Proof); it fails → the exact discrepancy back to the owner, no commit.
+Validate the receipt from its Decision brief (open the rest only when a concern points there), then spot-check ONE claim: the Proof when the task names one, else the riskiest claim in the receipt, checked with one cheap command — never a second review of the diff; it fails → the exact discrepancy back to the owner, no commit.
 Integrate: a **Test / evidence** proof the Command does not run (browser, manual) runs first; then the ship line (`ticket.sh integrate` → commit → `log`) as ONE Bash call, a red step stopping the chain; no script → the commit check, `git commit`, one `## Changes during build` line (sha, verdict, receipt pointer), and every `- [ ]` under the task flipped. A cleanup from `simplify-code` gets its own commit, apart from the feature commit.
 Integrated → stop the owner in the same turn, plus any background work it reports; keep a track's last code-task owner for its track end. One task per pass.
 
