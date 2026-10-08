@@ -27,6 +27,7 @@ One command that fails on every run: `pytest path/test_x.py::name -v`, the exact
 - Red → minimise: cut inputs, callers, config and steps one at a time, re-running each time, until all that is left is load-bearing. That repro becomes step 6's test.
 - Intermittent → raise the failure rate to 50%+ first (loop the trigger, add stress, inject sleeps); a 1% flake is not yet debuggable. The repro is then ONE command running the trigger N times (N ≥ 10), red when any run fails; record N, the rate and the conditions (order, load, seed, clock) in the ledger's Repro. Green = all N runs passing. Likely causes → `references/flake-triage.md`; no `references/flake-triage.md` → this loop is the whole recipe.
 - Red only in CI, or no local repro → reproduce in CI / staging; red only locally → diff the two environments (env vars, locale, services, versions).
+- Logs, CI output or environment state spread across many files → one cheap `rolepod-scout` digest first; work from its pointers. No subagents → read them yourself.
 - No repro after 30 minutes → expand the repro environment once; still none → return `BLOCKED` with what you tried and its evidence (run alone → hand the user what you tried and its evidence, and stop).
 
 A UI / browser bug, a WordPress bug, or sibling-plugin evidence under `.rolepod/evidence/` → `references/repro-backends.md`; no `references/repro-backends.md` → the first browser tool connected (none → describe the candidate repro for the user to confirm), or `wp-content/debug.log` for WordPress.

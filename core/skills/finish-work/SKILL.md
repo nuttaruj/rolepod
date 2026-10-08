@@ -28,7 +28,7 @@ Waiver: a failing check blocks merge unless the user waives that gate by name. A
 - **Snapshot and floor** — a commit past the last Snapshot is a new delta reviewed at its own tier (an R1 delta needs none), never a full re-review.
   - H1 reports stay immutable; never relabel H1.
   - H1 is reused at H2 only when every H1→H2 change is a verified finding fix closed at the receipt (`convening-code-review` Fix-verify); any other change after H1 is uncovered: surface it and route it at its current tier and mode.
-- **QA pass** — once per branch, after the final-review fixes and before the menu: ONE `rolepod-qa` over `<base>...HEAD` on the flows you name in its brief. No subagents → the Lead does it.
+- **QA pass** — once per branch, after the final-review fixes and before the menu: ONE `rolepod-qa` over `<base>...HEAD` on the flows you name in its brief, on a cheap-class model unless a flow needs a new E2E test. No subagents → the Lead does it.
   - Flows = the spec's Testing decisions, else the flows behind the user-visible files the diff touches; none → no pass, one receipt line saying so.
   - A QA finding → `convening-code-review` Fix-verify, with `rolepod-qa` rerunning only the failed flows. An open user-visible failure is the user's call at the menu.
   - QA tests or fixes are commits past the last Snapshot: a new delta at its own tier.

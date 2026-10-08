@@ -12,15 +12,21 @@ A prompt role name is not native dispatch metadata or hook evidence. Keep review
 
 | Class | The set's… | Work |
 |---|---|---|
-| **cheap** | small / fast model | docs, PM, copy, read-only sweeps |
+| **cheap** | small / fast model | docs, copy, read-only sweeps and digests, mechanical builds, flow runs, command-settled checks |
 | **balanced** | mid flagship | ALL implementation, high-risk paths included — the net is the strong review floor, never the writer's tier |
 | **strong** | top reasoning model | architecture, final-pass and adversarial review. A set whose top sits below frontier-class still gets the full review; the depth cap is a recorded LIMITATION |
 | **apex** | strongest tier the CLI exposes | the adversarial pass only: an irreversible change with no rollback (destructive migration, key rotation, live money movement), a novel design with no pattern to diff against, deep cross-system reasoning (races on financial invariants, distributed consistency), or a user ask; a CLI whose strong pin is its ceiling collapses apex into strong; a costlier rung is a cost decision, so surface it first; the dispatch line's `override` records the rung sent |
 
 Skills by class:
-- cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, clear doc edits, `manage-context`, explain-only answers.
-- cheap to balanced — `write-plan` against an existing spec, `rolepod-qa` hand-offs.
-- balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds, the lens review (`rolepod-reviewer`).
+- cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, `manage-context` and its handoff briefs, explain-only answers, release notes and changelogs.
+- cheap — every `domain: writing` task, not only pure copy.
+- cheap — a mechanical build task: a rename, config, wiring, a render or pin update, a change that copies an existing pattern; no new logic and no new test.
+- cheap — gathering before a fix: logs, CI output, a repro environment's state → one `rolepod-scout` digest the balanced owner works from (`debug-issue`, `finish-work` CI triage).
+- cheap — the flow run of the QA pass (open, click, observe, report); a new E2E test stays balanced.
+- cheap — a per-item verify a command or grep settles, at high effort; a judgment call stays balanced.
+- A cheap row never builds or verifies a high-risk path, and a cheap task returned rejected or `BLOCKED` twice goes balanced.
+- cheap to balanced — `write-plan` against an existing spec.
+- balanced — executing a plan's logic tasks, multi-agent planning, `debug-issue` fixes, `simplify-code`, perf, UI and infra builds, `check-work`, high-risk builds, a new E2E test, the lens review and its Fix-verify re-check (`rolepod-reviewer`).
 - strong — high-risk review (`rolepod-reviewer` `lens: security` / `lens: adversarial`), architecture, the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6), `deepen-codebase` (explorer tier: its step 2).
 
 The Lead picks the class at dispatch; escalate on a BLOCKED redispatch, a user ask, or the same agent failing its task twice (the next dispatch one tier up, strong at most).
@@ -33,7 +39,7 @@ The Lead picks the class at dispatch; escalate on a BLOCKED redispatch, a user a
 
 ## Fleets
 
-- One strong slot per fleet: sweep = cheap · build = balanced · per-item verify = balanced at high effort · the ONE judge or security reviewer = strong.
+- One strong slot per fleet: sweep = cheap · mechanical build = cheap · logic build = balanced · per-item verify = cheap at high effort when a command settles it, else balanced at high effort · the ONE judge or security reviewer = strong.
 - Never inherit the Lead's model across a fleet (one exception: several plans at once → `write-plan` `references/edge-cases.md`); never pin strong on a fan-out (price × N).
 - A stage that writes uses the role's instructions. Prefer the CLI's native named role; portable transport and Lead fallback are defined above. A fan-out uses the role's model tier where the CLI exposes that control.
 - Mechanics live in your CLI's `references/fanout-<cli>.md` (Claude: `fanout-claude.md`, Codex: `fanout-codex.md`); no file for your CLI → dispatch roles one at a time.
