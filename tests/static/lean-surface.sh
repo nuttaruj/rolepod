@@ -168,6 +168,37 @@ else
   fail=$((fail+1))
 fi
 
+# A plain YAML scalar holding ": " or " #" (or ending in ":") is invalid: strict
+# loaders drop the whole skill / agent. Shared skills/ tree + every bundle's agents.
+YAML_PLAIN=$(python3 - <<'PY'
+import glob, re
+bad = []
+for f in sorted(glob.glob("skills/**/SKILL.md", recursive=True) + glob.glob("plugins/*/agents/*.md")):
+    lines = open(f, encoding="utf-8").read().split("\n")
+    if not lines or lines[0] != "---":
+        continue
+    for i, ln in enumerate(lines[1:], 2):
+        if ln == "---":
+            break
+        m = re.match(r"^[A-Za-z_][\w-]*:\s+(\S.*)$", ln)
+        if not m:
+            continue
+        v = m.group(1)
+        if v[0] in "\"'":
+            continue
+        if ": " in v or " #" in v or v.endswith(":"):
+            bad.append("%s:%d" % (f, i))
+print("\n".join(bad))
+PY
+)
+if [ -z "$YAML_PLAIN" ]; then
+  echo "  ✓ frontmatter plain values carry no ': ' / ' #' / trailing ':' (skills + agents)"
+else
+  echo "  ✗ unquoted frontmatter value with ': ' / ' #' / trailing ':' (invalid YAML):"
+  printf "%s\n" "$YAML_PLAIN" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+
 check "adversarial-review keeps its stance heading" "[ \"$(/usr/bin/grep -c '^## Reviewer stance$' core/skills/adversarial-review/SKILL.md)\" -eq 1 ]"
 
 # ── Packaging leak — what ships under plugins/ is only what is meant to ──
