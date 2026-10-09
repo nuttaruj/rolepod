@@ -1710,6 +1710,8 @@ fi
 LD2_OUT=$(bash "$TICKET" start "$LDR_LEAD/plan.md" 1 2>"$TMP/lead2.err")
 LD2_WT=$(printf '%s\n' "$LD2_OUT" | sed -n '1p' | awk '{print $2}')
 ( cd "${LD2_WT:?}" && git commit -q --allow-empty -m "orphan task" )
+# the task worktree is nested under the Lead's (.worktrees/): move it out first so it outlives that removal
+git -C "$LDR" worktree move "$LD2_WT" "$TMP/ld2-moved" && LD2_WT="$TMP/ld2-moved"
 git -C "$LDR" worktree remove --force "$LDR_LEAD" >/dev/null 2>&1
 LD2_FIN=$(bash "$TICKET" finish "$LD2_WT" 2>&1); LD2_RC=$?
 if [ "$LD2_RC" -eq 2 ] && printf '%s\n' "$LD2_FIN" | grep -qF 'cannot resolve the base checkout' \
@@ -1793,7 +1795,8 @@ TK3_WT=$(printf '%s\n' "$TK3" | sed -n '1p' | awk '{print $2}')
 TK3_BRIEF=$(printf '%s\n' "$TK3" | sed -n '1p' | awk '{print $1}')
 if [ "$TK1_RC" -eq 0 ] && [ "$TK2_RC" -eq 0 ] && [ "$TK3_RC" -eq 0 ] \
   && [ -n "$TK1_WT" ] && [ "$TK1_WT" = "$TK2_WT" ] && [ "$TK3_WT" != "$TK1_WT" ] && [ -d "$TK3_WT" ] \
-  && [ "$(basename "$TK1_WT")" = "trk-repo-wt-trk-demo-a-lane-one" ] \
+  && [ "$(basename "$TK1_WT")" = "trk-demo-a-lane-one" ] \
+  && [ "$(dirname "$TK1_WT")" = "$TKR_REAL/.worktrees" ] \
   && [ "$(git -C "$TKR" worktree list | wc -l | tr -d ' ')" = "3" ]; then
   echo "  ✓ tracks: Task 1 and Task 2 of track A share one worktree, Task 3 (track B) gets its own"
 else
@@ -1982,15 +1985,44 @@ printf 'claude' > "$LKH/.rolepod/session-locks/$(lock_hash "$LKA_REAL")/other-se
 LKA_OUT=$(env -u CLAUDE_CODE_SESSION_ID -u ROLEPOD_SESSION_ID HOME="$LKH" bash "$TICKET" start "$LKA/2026-09-30-lock-demo.md" 1 2>"$TMP/lka.err"); LKA_RC=$?
 LKA_WT=$(printf '%s\n' "$LKA_OUT" | sed -n '1p' | awk '{print $2}')
 LKA_BRIEF=$(printf '%s\n' "$LKA_OUT" | sed -n '1p' | awk '{print $1}')
-if [ "$LKA_RC" -eq 0 ] && [ "$(basename "$LKA_WT")" = "lock-fresh-wt-lock-demo" ] \
+if [ "$LKA_RC" -eq 0 ] && [ "$(basename "$LKA_WT")" = "lock-demo" ] \
+  && [ "$(basename "$(dirname "$LKA_WT")")" = ".worktrees" ] \
   && [ "$(git -C "$LKA_WT" rev-parse --abbrev-ref HEAD)" = "lock-demo/plan" ] \
-  && grep -qE '^`git worktree add -b lock-demo/plan \.\./lock-fresh-wt-lock-demo`' "$LKA_BRIEF" \
-  && grep -qE '^- Edit only Files allowed under \.\./lock-fresh-wt-lock-demo, except update the canonical receipt at .+ in the base checkout' "$LKA_BRIEF" \
+  && grep -qE '^`git worktree add -b lock-demo/plan \.worktrees/lock-demo`' "$LKA_BRIEF" \
+  && grep -qE '^- Edit only Files allowed under \.worktrees/lock-demo, except update the canonical receipt at .+ in the base checkout' "$LKA_BRIEF" \
   && ! grep -q -- '-t1-' "$LKA_BRIEF" \
   && ! printf '%s\n' "$LKA_OUT" | sed -n '3p' | grep -qF ' finish '; then
   echo "  ✓ single-track plan + a fresh lock from another session: the plan runs in <feature>/plan, no finish per task"
 else
   echo "  ✗ single-track plan with a live lock: rc=$LKA_RC out=[$LKA_OUT]"; fail=$((fail+1)); cat "$TMP/lka.err" >&2
+fi
+
+# A nested worktree path: start makes .worktrees/ ignored (info/exclude) in a repo with no ignore rule, once.
+LKA_EXCL="$(git -C "$LKA" rev-parse --path-format=absolute --git-path info/exclude)"
+env -u CLAUDE_CODE_SESSION_ID -u ROLEPOD_SESSION_ID HOME="$LKH" bash "$TICKET" start "$LKA/2026-09-30-lock-demo.md" 1 >/dev/null 2>&1; LKA2_RC=$?
+if git -C "$LKA" check-ignore -q .worktrees/ \
+  && [ -z "$(git -C "$LKA" status --porcelain | grep '\.worktrees')" ] \
+  && [ "$LKA2_RC" -eq 0 ] && [ "$(grep -cxF '.worktrees/' "$LKA_EXCL")" = 1 ]; then
+  echo "  ✓ start with a .worktrees/ path ignores .worktrees/ (base status shows none of it), and a second start adds no second exclude line"
+else
+  echo "  ✗ .worktrees/ ignore after start: rc2=$LKA2_RC exclude=[$(tr '\n' '|' < "$LKA_EXCL")] status=[$(git -C "$LKA" status --porcelain | tr '\n' '|')]"; fail=$((fail+1))
+fi
+
+# A handoff from the old plan-lint (a ../<repo>-wt-<name> sibling path, an in-flight plan) still starts as before.
+LGS="$TMP/legacy-skills"; mkdir -p "$LGS/implement-plan/scripts" "$LGS/write-plan/scripts"
+cp "$TICKET" "$LGS/implement-plan/scripts/ticket.sh"
+printf '%s\n' '#!/bin/bash' 'set -o pipefail' 'bash "'"$(dirname "$TICKET")/../../write-plan/scripts/plan-lint.sh"'" "$@" | sed "s#\.worktrees/\([A-Za-z0-9._-]*\)#../legacy-wt-\1#g"' > "$LGS/write-plan/scripts/plan-lint.sh"
+LGR="$TMP/lock-legacy"; mk_lock_repo "$LGR"
+LGR_REAL="$(git -C "$LGR" rev-parse --show-toplevel)"
+mkdir -p "$LKH/.rolepod/session-locks/$(lock_hash "$LGR_REAL")"
+printf 'claude' > "$LKH/.rolepod/session-locks/$(lock_hash "$LGR_REAL")/other-session.lock"
+LGR_OUT=$(env -u CLAUDE_CODE_SESSION_ID -u ROLEPOD_SESSION_ID HOME="$LKH" bash "$LGS/implement-plan/scripts/ticket.sh" start "$LGR/2026-09-30-lock-demo.md" 1 2>"$TMP/lgr.err"); LGR_RC=$?
+LGR_WT=$(printf '%s\n' "$LGR_OUT" | sed -n '1p' | awk '{print $2}')
+if [ "$LGR_RC" -eq 0 ] && [ "$(basename "$LGR_WT")" = "legacy-wt-lock-demo" ] && [ "$(dirname "$LGR_WT")" = "$(dirname "$LGR_REAL")" ] \
+  && ! git -C "$LGR" check-ignore -q .worktrees/; then
+  echo "  ✓ a legacy ../<repo>-wt-<name> handoff still starts as a sibling worktree, no .worktrees/ exclude written"
+else
+  echo "  ✗ legacy sibling handoff: rc=$LGR_RC out=[$LGR_OUT]"; fail=$((fail+1)); cat "$TMP/lgr.err" >&2
 fi
 
 LKB="$TMP/lock-stale"; mk_lock_repo "$LKB"

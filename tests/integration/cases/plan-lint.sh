@@ -1974,13 +1974,13 @@ printf '%s\n' "$OUT" | grep -q '^- Budget: build <= 40 tool calls' \
 
 # Worktree fence: the Bounds name the task's worktree as the only place to edit
 # (2026-09-19: two task owners edited the main checkout's copy before their worktree).
-printf '%s\n' "$OUT" | grep -qE '^- Edit only Files allowed under \.\./[A-Za-z0-9._-]+-wt-[a-z0-9-]+-t[0-9]+-[a-z0-9-]+, except update the canonical receipt at .+ in the base checkout; no other base-checkout path is allowed\.' \
+printf '%s\n' "$OUT" | grep -qE '^- Edit only Files allowed under \.worktrees/[a-z0-9-]+-t[0-9]+-[a-z0-9-]+, except update the canonical receipt at .+ in the base checkout; no other base-checkout path is allowed\.' \
   && echo "  ✓ --brief Bounds fence every edit inside the task's worktree" \
   || { echo "  ✗ --brief Bounds do not name the worktree as the only place to edit"; fail=$((fail+1)); }
 
 # Worktree line: the brief names the worktree after the task (mechanism).
 printf '%s\n' "$OUT" | grep -q '^## Worktree' \
-  && printf '%s\n' "$OUT" | grep -qE '^`git worktree add -b [a-z0-9-]+/t[0-9]+-[a-z0-9-]+ \.\./[A-Za-z0-9._-]+-wt-[a-z0-9-]+-t[0-9]+-[a-z0-9-]+`' \
+  && printf '%s\n' "$OUT" | grep -qE '^`git worktree add -b [a-z0-9-]+/t[0-9]+-[a-z0-9-]+ \.worktrees/[a-z0-9-]+-t[0-9]+-[a-z0-9-]+`' \
   && echo "  ✓ --brief prints a task-named worktree command" \
   || { echo "  ✗ --brief Worktree line missing or malformed"; fail=$((fail+1)); }
 
@@ -2000,9 +2000,9 @@ cat > "$SPACE_REPO/plan.md" <<'EOF'
 - **Owner:** backend-developer
 EOF
 SPOUT=$(bash "$LINT" --brief 1 "$SPACE_REPO/plan.md" 2>&1)
-if printf '%s\n' "$SPOUT" | grep -qE '^`git worktree add -b [a-z0-9-]+/t1-[a-z0-9-]+ \.\./Has-Space-Repo-wt-[a-z0-9-]+-t1-[a-z0-9-]+`' \
-  && printf '%s\n' "$SPOUT" | grep -qE 'under \.\./Has-Space-Repo-wt-.*except update the canonical receipt at .+ in the base checkout'; then
-  echo "  ✓ --brief slugs a repo dir with a space into the worktree name"
+if printf '%s\n' "$SPOUT" | grep -qE '^`git worktree add -b [a-z0-9-]+/t1-[a-z0-9-]+ \.worktrees/[a-z0-9-]+-t1-[a-z0-9-]+`' \
+  && printf '%s\n' "$SPOUT" | grep -qE 'under \.worktrees/[a-z0-9-]+-t1-.*except update the canonical receipt at .+ in the base checkout'; then
+  echo "  ✓ --brief names the worktree under .worktrees/, never from the repo dir name (a space in it is harmless)"
 else
   echo "  ✗ --brief left a space in the worktree name: $(printf '%s\n' "$SPOUT" | grep 'git worktree add')"; fail=$((fail+1))
 fi
@@ -3870,8 +3870,8 @@ else echo "  ✗ tracks: Track-less task passed (rc=$TRC): $TOUT"; fail=$((fail+
 
 # --brief: a task in a track gets the track worktree; tier R2/R3 gets no in-task review
 TB=$(bash "$LINT" --brief 2 "$TP" 2>/dev/null)
-if printf '%s\n' "$TB" | grep -qE '^`git worktree add -b demo-feat/a-first-lane \.\./[A-Za-z0-9._-]+-wt-demo-feat-a-first-lane` — cd there' \
-  && printf '%s\n' "$TB" | grep -qE '^- Edit only Files allowed under \.\./[A-Za-z0-9._-]+-wt-demo-feat-a-first-lane, except update the canonical receipt at .+ in the base checkout' \
+if printf '%s\n' "$TB" | grep -qE '^`git worktree add -b demo-feat/a-first-lane \.worktrees/demo-feat-a-first-lane` — cd there' \
+  && printf '%s\n' "$TB" | grep -qE '^- Edit only Files allowed under \.worktrees/demo-feat-a-first-lane, except update the canonical receipt at .+ in the base checkout' \
   && ! printf '%s\n' "$TB" | grep -q -- '-t2-'; then
   echo "  ✓ --brief: a track task prints the track branch and worktree path"
 else echo "  ✗ --brief track worktree: $(printf '%s\n' "$TB" | sed -n '/^## Worktree/,/^## Goal/p')"; fail=$((fail+1)); fi
@@ -3887,8 +3887,8 @@ else echo "  ✗ --brief second track: $(printf '%s\n' "$TB3" | sed -n '/^## Wor
 PWB=$(bash "$LINT" --brief 2 "$TP" --plan-worktree 2>/dev/null)
 PWR=$(printf '%s\n' "$PWB" | awk '/^## Reviewers/{f=1;next} /^## /{f=0} f')
 PWTIER=$(printf '%s\n' "$PWB" | awk '/^## Tier/{getline; print substr($0,1,2); exit}')
-if printf '%s\n' "$PWB" | grep -qE '^`git worktree add -b demo-feat/plan \.\./[A-Za-z0-9._-]+-wt-demo-feat` — ' \
-  && printf '%s\n' "$PWB" | grep -qE '^- Edit only Files allowed under \.\./[A-Za-z0-9._-]+-wt-demo-feat, except update the canonical receipt at .+ in the base checkout' \
+if printf '%s\n' "$PWB" | grep -qE '^`git worktree add -b demo-feat/plan \.worktrees/demo-feat` — ' \
+  && printf '%s\n' "$PWB" | grep -qE '^- Edit only Files allowed under \.worktrees/demo-feat, except update the canonical receipt at .+ in the base checkout' \
   && ! printf '%s\n' "$PWB" | grep -q -- '-t2-' \
   && { [ "$PWTIER" = R4 ] || [ "$PWR" = '`none` — the track-end review covers this task' ]; }; then
   echo "  ✓ --brief --plan-worktree: Worktree, Bounds and Reviewers name the plan worktree"
@@ -3906,7 +3906,7 @@ esac
 NT="$TMP/2026-09-30-plain-feat.md"
 awk '/^## Tracks$/ { skip = 1; next } skip && /^## / { skip = 0 } skip { next } /^- \*\*Track:\*\*/ { next } { print }' "$TP" > "$NT"
 NB=$(bash "$LINT" --brief 2 "$NT" 2>/dev/null)
-if printf '%s\n' "$NB" | grep -qE '^`git worktree add -b [a-z0-9-]+/t2-build-beta \.\./[A-Za-z0-9._-]+-wt-[a-z0-9-]+-t2-build-beta` — cd there for every command; the name says which task it holds$' \
+if printf '%s\n' "$NB" | grep -qE '^`git worktree add -b [a-z0-9-]+/t2-build-beta \.worktrees/[a-z0-9-]+-t2-build-beta` — cd there for every command; the name says which task it holds$' \
   && printf '%s\n' "$NB" | grep -qF '`none` — the track-end review covers this task'; then
   echo "  ✓ --brief: a plan with no ## Tracks keeps the per-task worktree line; Reviewers is the track-end none"
 else echo "  ✗ --brief plain plan drifted: $(printf '%s\n' "$NB" | sed -n '/^## Worktree/,/^## Goal/p')"; fail=$((fail+1)); fi
@@ -4539,6 +4539,11 @@ else
   echo "  ✗ an aside or a note leaked a path rc=$WRPRC: $WRP / [$WRF1] / [$WRF2]"; fail=$((fail+1))
 fi
 rm -rf "$NS"
+
+# The Lead writes a worktree file's path from the base checkout root (.worktrees/<name>/<path>): orchestrating-plans Guardrails carry the rule.
+if grep -qF -- '- A path inside a worktree, in a reply or a link → write it from the base checkout root (`.worktrees/<name>/<path>`), never from the worktree'"'"'s own root: a reader on the base checkout then opens the worktree'"'"'s file, not the base copy.' "$REPO_DIR/core/skills/orchestrating-plans/SKILL.md"; then
+  echo "  ✓ orchestrating-plans Guardrails carry the worktree-path-from-base-root rule"
+else echo "  ✗ orchestrating-plans Guardrails lack the worktree-path-from-base-root rule"; fail=$((fail+1)); fi
 
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

@@ -936,10 +936,9 @@ cmd_start() {
   if plan_has_tracks "$plan_abs"; then
     [ -z "$(track_of "$(plan_task_tracks "$plan_abs")" "$n")" ] || wt_mode="track"
   elif plan_is_sequential "$plan_abs"; then
-    local pfeat prepo pwt_abs prows
+    local pfeat pwt_abs prows
     pfeat="$(plan_feature_of "$plan_abs")"
-    prepo="$(basename "$repo_root" | sed 's/[^A-Za-z0-9._-]/-/g')"
-    pwt_abs="$(cd "$repo_root/.." && pwd -P)/${prepo}-wt-${pfeat}"
+    pwt_abs="$(cd "$repo_root" && pwd -P)/.worktrees/${pfeat}"
     prows="$(plan_task_rows "$plan_abs")"
     if git -C "$repo_root" worktree list --porcelain 2>/dev/null | grep -qxF "worktree $pwt_abs" \
       || { [ "$(done_ids_of "$prows")" = " " ] && foreign_live_lock "$repo_root"; }; then
@@ -995,6 +994,24 @@ cmd_start() {
   branch="$(printf '%s\n' "$wtcmd" | awk '{print $5}')"
   wtpath="$(printf '%s\n' "$wtcmd" | awk '{print $6}')"
   [ -n "$branch" ] && [ -n "$wtpath" ] || { echo "ticket: start: could not parse worktree command: $wtcmd" >&2; exit 2; }
+
+  # A nested path (.worktrees/<name>): keep .worktrees/ out of the base's `git add -A`, then create it.
+  case "$wtpath" in
+    .worktrees/*)
+      if ! git -C "$repo_root" check-ignore -q .worktrees/ 2>/dev/null; then
+        local wt_excl
+        wt_excl="$(git -C "$repo_root" rev-parse --git-path info/exclude 2>/dev/null)"
+        case "$wt_excl" in ''|/*) ;; *) wt_excl="$repo_root/$wt_excl" ;; esac
+        if [ -n "$wt_excl" ]; then
+          mkdir -p "$(dirname "$wt_excl")" 2>/dev/null || true
+          [ -f "$wt_excl" ] || : > "$wt_excl" 2>/dev/null || true
+          if [ -s "$wt_excl" ] && [ -n "$(tail -c 1 "$wt_excl")" ]; then printf '\n' >> "$wt_excl" 2>/dev/null || true; fi
+          printf '.worktrees/\n' >> "$wt_excl" 2>/dev/null || true
+        fi
+      fi
+      mkdir -p "$repo_root/.worktrees" 2>/dev/null || true
+      ;;
+  esac
 
   wtparent="$(cd "$repo_root/$(dirname "$wtpath")" 2>/dev/null && pwd)"
   [ -n "$wtparent" ] || { echo "ticket: start: could not resolve the worktree path from $wtpath" >&2; exit 2; }

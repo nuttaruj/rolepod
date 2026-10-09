@@ -98,6 +98,7 @@ Done when: the final review is closed or ruled, or none is due.
 - Forced to end → one `## Changes during build` line: stopped after Task N · next Task M · how to start the env. A wait offers /compact only as a context-check relay (`manage-context`; none → one ~100-char line: plan + next step).
 - Whole suite: once per release, by you.
 - A new idea → one `## Follow-ups` line, never a mid-build redesign; a follow-up inside the approved spec → a new task, tiered and dispatched.
+- A path inside a worktree, in a reply or a link → write it from the base checkout root (`.worktrees/<name>/<path>`), never from the worktree's own root: a reader on the base checkout then opens the worktree's file, not the base copy.
 
 ## Next phase
 

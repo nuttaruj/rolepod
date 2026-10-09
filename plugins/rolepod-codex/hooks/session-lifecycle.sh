@@ -157,12 +157,17 @@ printf '%s\n%s' "$CLI_NAME" "$PPID" >"$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null ||
 # IPC contract. To keep it from leaking into the user's commits, register it in
 # .git/info/exclude (local, never committed) rather than the tracked .gitignore.
 EXCLUDE_FILE=$(git -C "$WORKTREE" rev-parse --git-path info/exclude 2>/dev/null)
+# git prints the path relative to $WORKTREE; anchor it so a hook cwd outside the repo (Cursor: plugin root) still hits the repo's file
+case "$EXCLUDE_FILE" in ''|/*) ;; *) EXCLUDE_FILE="$WORKTREE/$EXCLUDE_FILE" ;; esac
 if [ -n "$EXCLUDE_FILE" ]; then
   [ -f "$EXCLUDE_FILE" ] || : > "$EXCLUDE_FILE" 2>/dev/null || true
-  if ! grep -qxF '.rolepod/' "$EXCLUDE_FILE" 2>/dev/null; then
-    if [ -s "$EXCLUDE_FILE" ] && [ -n "$(tail -c 1 "$EXCLUDE_FILE")" ]; then printf '\n' >> "$EXCLUDE_FILE" 2>/dev/null || true; fi   # no final newline → the append would corrupt the user's last rule
-    printf '.rolepod/\n' >> "$EXCLUDE_FILE" 2>/dev/null || true
-  fi
+  # .worktrees/ holds the isolation worktrees this hook's message suggests; ignored so the base's `git add -A` never stages one
+  for _ex in '.rolepod/' '.worktrees/'; do
+    if ! grep -qxF "$_ex" "$EXCLUDE_FILE" 2>/dev/null; then
+      if [ -s "$EXCLUDE_FILE" ] && [ -n "$(tail -c 1 "$EXCLUDE_FILE")" ]; then printf '\n' >> "$EXCLUDE_FILE" 2>/dev/null || true; fi   # no final newline → the append would corrupt the user's last rule
+      printf '%s\n' "$_ex" >> "$EXCLUDE_FILE" 2>/dev/null || true
+    fi
+  done
 fi
 mkdir -p "$WORKTREE/.rolepod" 2>/dev/null && \
   printf 'v1\n' > "$WORKTREE/.rolepod/parent-active" 2>/dev/null || true
@@ -172,7 +177,7 @@ if [ "$ACTIVE_SIBLINGS" -eq 0 ] || [ "$SILENT" -eq 1 ]; then
   exit 0
 fi
 
-SUGGEST_PATH="${WORKTREE}-task-$(date +%s)"
+SUGGEST_PATH="${WORKTREE}/.worktrees/task-$(date +%s)"
 
 # Emit additionalContext so Lead reads it on turn 1 and self-acts. Env-pass the
 # path / count / names so a quote in a branch name cannot break the
@@ -192,7 +197,7 @@ msg = ('Sibling rolepod session(s) detected in this worktree (%s active%s). '
        'Before any Edit/Write: spawn an isolated worktree FIRST:\n\n'
        '  git worktree add %s -b %s\n'
        '  cd %s\n\n'
-       'Then continue work there. Override with ROLEPOD_ALLOW_SHARED_WORKTREE=1 '
+       'Then continue work there, and write every path you show the user from this checkout\'s root (.worktrees/<name>/<path>). Override with ROLEPOD_ALLOW_SHARED_WORKTREE=1 '
        'if this session is intentionally shared (e.g. read-only review).') % (n, detail, path, branch, path)
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': msg}}))
 " 2>/dev/null || echo '{}'

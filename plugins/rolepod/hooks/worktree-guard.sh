@@ -190,7 +190,7 @@ EOF2
   exit 0
 fi
 
-SUGGEST_PATH="${WORKTREE}-task-$(date +%s)"
+SUGGEST_PATH="${WORKTREE}/.worktrees/task-$(date +%s)"
 REL="${TARGET#"$WORKTREE"/}"
 
 # HARD deny — a live sibling owns this exact file. Point at native isolation

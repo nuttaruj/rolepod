@@ -23,7 +23,7 @@
 #   `none` (its track's track-end review covers it) unless it is its track's only
 #   code task — then its own cell. Round mechanics live in convening-code-review, never here.
 #   `--plan-worktree`: the task runs in the plan worktree (branch
-#   <feature>/plan, path ../<repo>-wt-<feature>) — Worktree and Bounds
+#   <feature>/plan, path .worktrees/<feature>) — Worktree and Bounds
 #   follow from it.
 #   `--main`, in any position after --brief: an on-main task, no
 #   worktree — prints `## Checkout` in place of `## Worktree`, and Bounds
@@ -636,7 +636,7 @@ if [ "${1:-}" = "--brief" ]; then
   # shellcheck disable=SC2016
   BRIEF_AWK='
   # Paths come through ENVIRON: awk -v would process a backslash as an escape.
-  BEGIN { planpath = ENVIRON["RP_BRIEF_PLAN"]; repo = ENVIRON["RP_BRIEF_REPO"]; baseroot = ENVIRON["RP_BRIEF_BASE"] }
+  BEGIN { planpath = ENVIRON["RP_BRIEF_PLAN"]; baseroot = ENVIRON["RP_BRIEF_BASE"] }
   function slug(x,   t, n, a, k, o, w) {
     t = tolower(x); gsub(/[^a-z0-9]+/, "-", t); gsub(/^-+|-+$/, "", t)
     n = split(t, a, "-"); o = ""
@@ -1149,10 +1149,10 @@ if [ "${1:-}" = "--brief" ]; then
       tpath = tbranch; gsub(/\//, "-", tpath)
 if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       print "## Worktree"
-      printf "`git worktree add -b %s ../%s-wt-%s` — cd there for every command; the name says which track it holds\n", tbranch, repo, tpath
+      printf "`git worktree add -b %s .worktrees/%s` — cd there for every command; the name says which track it holds\n", tbranch, tpath
     } else {
       print "## Worktree"
-      printf "`git worktree add -b %s/t%s-%s ../%s-wt-%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, repo, feat, want, tslug
+      printf "`git worktree add -b %s/t%s-%s .worktrees/%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, feat, want, tslug
     }
     print "## Goal"
     print (D == "" ? "(not in plan)" : D)
@@ -1309,8 +1309,8 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     } else print "`none` — the track-end review covers this task"
     print "## Bounds"
     if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
-    else if (tbranch != "") printf "- Edit only Files allowed under ../%s-wt-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", repo, tpath, baseroot, tbase, want + 0
-    else printf "- Edit only Files allowed under ../%s-wt-%s-t%s-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", repo, feat, want, tslug, baseroot, tbase, want + 0
+    else if (tbranch != "") printf "- Edit only Files allowed under .worktrees/%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", tpath, baseroot, tbase, want + 0
+    else printf "- Edit only Files allowed under .worktrees/%s-t%s-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", feat, want, tslug, baseroot, tbase, want + 0
     print "- Return with passing scoped Command evidence; run the repo commit check once. Review reports: .rolepod/evidence/review/" rname "-<lens>.md, <lens> one of spec · standards · security · adversarial · perf · ui · arch."
     printf "- Write your decision brief to %s/docs/rolepod/tasks/%s/task-%02d.md on the base checkout; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", baseroot, tbase, want + 0
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
@@ -1323,8 +1323,6 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
   BRIEF_BRANCH="$(git -C "$BRIEF_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)"
   BRIEF_BASE_ROOT="$(git -C "$BRIEF_ROOT" config --get "branch.$BRIEF_BRANCH.rolepod-base-root" 2>/dev/null)"
   [ -n "$BRIEF_BASE_ROOT" ] && [ -d "$BRIEF_BASE_ROOT" ] && BRIEF_RECEIPT_ROOT="$BRIEF_BASE_ROOT"
-  # slugged: the worktree command is later split on whitespace (ticket.sh start)
-  BRIEF_REPO="$(basename "$BRIEF_ROOT" | sed 's/[^A-Za-z0-9._-]/-/g')"
   # <git-root>/.rolepod/risk-paths — parsed exactly like precommit-gate.sh risk_filter.
   RP_RISK_ADD=""; RP_RISK_EXCL=""
   if [ -f "$BRIEF_ROOT/.rolepod/risk-paths" ]; then
@@ -1395,9 +1393,9 @@ EOF
     inside { print }
   ' "$PLAN")"
   if [ -n "$CONTRACT" ]; then
-    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$TAGSPAN_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$TAGSPAN_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$TAGSPAN_AWK$BRIEF_AWK" "$PLAN"
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$TAGSPAN_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi

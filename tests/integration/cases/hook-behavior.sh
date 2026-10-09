@@ -2574,7 +2574,7 @@ ic_sl ic-a >/dev/null
 IC_BANNER=$(ic_sl ic-b | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])' 2>/dev/null || true)
 IC_CMD=$(printf '%s\n' "$IC_BANNER" | sed -n 's/^  \(git worktree add .*\)$/\1/p')
 case "$IC_CMD" in
-  "git worktree add $IC_REPO-task-"*" -b repo-task-"*) case "$IC_CMD" in *" iso-main"*) IC_OK=0 ;; *) IC_OK=1 ;; esac ;;
+  "git worktree add $IC_REPO/.worktrees/task-"*" -b task-"*) case "$IC_CMD" in *" iso-main"*) IC_OK=0 ;; *) IC_OK=1 ;; esac ;;
   *) IC_OK=0 ;;
 esac
 if [ "$IC_OK" = 1 ]; then echo "  ✓ sibling banner prints 'git worktree add <path> -b <new-branch>', not the current branch"; else echo "  ✗ sibling banner command: [$IC_CMD]"; fail=$((fail+1)); fi
@@ -2584,10 +2584,25 @@ out=$(printf '{"tool_name":"Write","session_id":"ic-c","cwd":"%s","tool_input":{
 IC_REASON=$(printf '%s' "$out" | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"].get("permissionDecisionReason",""))' 2>/dev/null || true)
 IC_CMD=$(printf '%s\n' "$IC_REASON" | sed -n 's/^  • \(git worktree add .*\) && cd .*$/\1/p')
 case "$IC_CMD" in
-  "git worktree add $IC_REPO-task-"*" -b repo-task-"*) case "$IC_CMD" in *" iso-main"*) IC_OK=0 ;; *) IC_OK=1 ;; esac ;;
+  "git worktree add $IC_REPO/.worktrees/task-"*" -b task-"*) case "$IC_CMD" in *" iso-main"*) IC_OK=0 ;; *) IC_OK=1 ;; esac ;;
   *) IC_OK=0 ;;
 esac
 if [ "$IC_OK" = 1 ]; then echo "  ✓ collision deny prints 'git worktree add <path> -b <new-branch>', not the current branch"; else echo "  ✗ collision deny command: [$IC_CMD] out=${out:0:200}"; fail=$((fail+1)); fi
+case "$IC_BANNER" in *"write every path you show the user from this checkout's root (.worktrees/<name>/<path>)"*) echo "  ✓ sibling banner tells the Lead to write worktree paths from the checkout root" ;; *) echo "  ✗ sibling banner lacks the checkout-root path rule"; fail=$((fail+1)) ;; esac
+# info/exclude: SessionStart registers .rolepod/ and .worktrees/ once each, and keeps a last rule that has no final newline
+IC_EX="$IC_REPO/.git/info/exclude"
+printf 'user-rule' > "$IC_EX"
+ic_sl ic-x >/dev/null; ic_sl ic-x >/dev/null
+if [ "$(grep -cxF '.rolepod/' "$IC_EX")" = 1 ] && [ "$(grep -cxF '.worktrees/' "$IC_EX")" = 1 ] && grep -qxF 'user-rule' "$IC_EX"; then
+  echo "  ✓ SessionStart registers .rolepod/ and .worktrees/ once each in info/exclude, user's last rule intact"
+else echo "  ✗ info/exclude after two SessionStarts: [$(tr '\n' '|' < "$IC_EX")]"; fail=$((fail+1)); fi
+# process cwd outside the repo (Cursor runs hooks from the plugin root): git prints info/exclude relative to the repo, so the entries must still land in the repo's file
+IC_OUT="$IC_TMP/outside"; mkdir -p "$IC_OUT"; : > "$IC_EX"
+printf '{"session_id":"%s","cwd":"%s"}' ic-y "$IC_REPO" | (cd "$IC_OUT" && HOME="$IC_TMP" bash "$HOOKS/session-lifecycle.sh" >/dev/null 2>&1) || true
+printf '{"session_id":"%s","cwd":"%s"}' ic-y "$IC_REPO" | (cd "$IC_OUT" && HOME="$IC_TMP" bash "$HOOKS/session-lifecycle.sh" >/dev/null 2>&1) || true
+if [ "$(grep -cxF '.rolepod/' "$IC_EX")" = 1 ] && [ "$(grep -cxF '.worktrees/' "$IC_EX")" = 1 ] && [ ! -e "$IC_OUT/.git" ]; then
+  echo "  ✓ SessionStart run from a cwd outside the repo still registers .rolepod/ and .worktrees/ once each in the repo's info/exclude"
+else echo "  ✗ outside-cwd run: repo exclude [$(tr '\n' '|' < "$IC_EX")], outside .git: $(ls -d "$IC_OUT/.git" 2>&1)"; fail=$((fail+1)); fi
 rm -rf "$IC_TMP"
 fi
 

@@ -366,7 +366,7 @@ fi
 
 # ── Competitor brand scrub ─────────────────────────────────────────────
 # Allowed: nothing. system files, entry docs, rendered output all clean.
-BRAND_LEAKS=$(grep -rl -i "superpower" --include="*.md" --include="*.tmpl" --include="*.yml" . 2>/dev/null | grep -v "^./build/rendered/" | grep -v "^./.git/" | grep -v "^./brief/" | grep -v "^./docs/rolepod/" || true)
+BRAND_LEAKS=$(grep -rl -i "superpower" --include="*.md" --include="*.tmpl" --include="*.yml" . 2>/dev/null | grep -v "^./build/rendered/" | grep -v "^./.git/" | grep -v "^./.worktrees/" | grep -v "^./brief/" | grep -v "^./docs/rolepod/" || true)
 if [ -z "$BRAND_LEAKS" ]; then
   echo "  ✓ no competitor brand refs in source"
 else
