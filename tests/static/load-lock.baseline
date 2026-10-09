@@ -34,7 +34,7 @@ lead	skills/finish-work/references/ci-triage.md	3793
 lead	skills/finish-work/templates/finish-menu.md	2363
 lead	skills/finish-work/templates/pr-body.md	689
 lead	skills/finish-work/templates/release-checklist.md	1459
-lead	skills/implement-plan/SKILL.md	9214
+lead	skills/implement-plan/SKILL.md	9345
 lead	skills/implement-plan/examples/execution-examples.md	1838
 lead	skills/implement-plan/references/sibling-plugins.md	561
 lead	skills/implement-plan/references/wizard.md	6786
@@ -51,9 +51,9 @@ lead	skills/rolepod-stats/SKILL.md	1303
 lead	skills/coordinating-parallel-tracks/SKILL.md	8780
 lead	skills/using-rolepod/SKILL.md	9014
 lead	skills/using-rolepod/examples/routing-transcripts.md	4316
-lead	skills/using-rolepod/references/fanout-claude.md	2663
+lead	skills/using-rolepod/references/fanout-claude.md	4428
 lead	skills/using-rolepod/references/fanout-codex.md	2534
-lead	skills/using-rolepod/references/model-tiers.md	8521
+lead	skills/using-rolepod/references/model-tiers.md	8649
 lead	skills/using-rolepod/references/plugins-and-mcp.md	952
 lead	skills/using-rolepod/references/scope-then-spawn.md	3542
 lead	skills/using-rolepod/references/session-mode.md	1300
@@ -76,14 +76,14 @@ lead	skills/write-spec/references/question-bank.md	4294
 lead	skills/write-spec/references/scope-splitting.md	1607
 lead	skills/write-spec/templates/spec-template.md	2705
 lead	standing	18909
-owner	code-writer-own	22121
+owner	code-writer-own	22252
 owner	skills/debug-issue/SKILL.md	10565
 owner	skills/debug-issue/references/flake-triage.md	1190
 owner	skills/debug-issue/references/repro-backends.md	1304
 owner	skills/debug-issue/references/root-cause-tracing.md	906
 owner	skills/debug-issue/templates/debug-report.md	1400
 owner	skills/debug-issue/templates/hypothesis-ledger.md	1340
-owner	skills/implement-plan/SKILL.md	9214
+owner	skills/implement-plan/SKILL.md	9345
 owner	skills/implement-plan/examples/execution-examples.md	1838
 owner	skills/implement-plan/references/sibling-plugins.md	561
 owner	skills/implement-plan/references/wizard.md	6786

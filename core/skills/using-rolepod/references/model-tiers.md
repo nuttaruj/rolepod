@@ -25,7 +25,7 @@ Skills by class:
 - cheap — a per-item verify a command or grep settles, at high effort; a judgment call stays balanced.
 - A cheap row never builds or verifies a high-risk path, and a cheap task returned rejected or `BLOCKED` twice goes balanced.
 - cheap to balanced — `write-plan` against an existing spec.
-- balanced — executing a plan's logic tasks, multi-agent planning, `debug-issue` fixes, `simplify-code`, perf, UI and infra builds, `check-work`, high-risk builds, a new E2E test, the lens review and its Fix-verify re-check (`rolepod-reviewer`).
+- balanced — executing a plan's logic tasks, multi-agent planning, `debug-issue` fixes, `simplify-code`, perf, UI and infra builds, `check-work`, high-risk builds, a new E2E test, the lens review and its Fix-verify re-check (`rolepod-reviewer`; a `lens: security` re-check stays strong).
 - strong — high-risk review (`rolepod-reviewer` `lens: security` / `lens: adversarial`), architecture, the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6), `deepen-codebase` (explorer tier: its step 2).
 
 The Lead picks the class at dispatch; escalate on a BLOCKED redispatch, a user ask, or the same agent failing its task twice (the next dispatch one tier up, strong at most).
@@ -34,7 +34,7 @@ The Lead picks the class at dispatch; escalate on a BLOCKED redispatch, a user a
 
 - A strong row passes a strong-class model on the call; no rolepod type pins strong.
 - A spawn with no pin inherits the Lead. Under a balanced or cheap Lead that is a silent downgrade, so pass an explicit strong-class override on that ONE call, never on a fan-out.
-- A downgraded strong role is not the strong slot. `rolepod-reviewer` runs balanced on every CLI, except the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6): one fresh strong `rolepod-reviewer` via the one-call strong override above. A `rolepod-reviewer` with `lens: security` or `lens: adversarial` gets a strong-class model on the call. The commit gate checks for a security lens report, any model, not the tier.
+- A downgraded strong role is not the strong slot. `rolepod-reviewer` runs balanced on every CLI, except the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6): one fresh strong `rolepod-reviewer` via the one-call strong override above. A `rolepod-reviewer` with `lens: security` or `lens: adversarial` gets a strong-class model on the call. The commit gate never reads the tier: on a high-risk path its risk-no-test check clears on a test edit or any spec / standards / security lens report, any model.
 
 ## Fleets
 
