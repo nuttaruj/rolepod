@@ -150,7 +150,7 @@ check "opencode with an OpenAI default model stays usable under a Codex Lead" "p
 mkdir -p "$HOME/.cursor"; printf '{ "model": "gemini-3-pro" }\n' > "$HOME/.cursor/cli-config.json"
 out=$(bash "$RUNNER" --pool --lead claude)
 check "cursor pinned to a Gemini-family model id classifies as google (agy's model-id format)" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *google'"
-# v2.83.2: Cursor stores "model" as an object; Auto = no fixed family; more vendors; opencode last-used fallback
+# v2.83.2: Cursor stores "model" as an object; Auto = no fixed family; more vendors; opencode last-used model is never the family
 printf '{ "model": { "modelId": "composer-2.5", "displayName": "Composer 2.5" } }\n' > "$HOME/.cursor/cli-config.json"
 out=$(bash "$RUNNER" --pool --lead claude)
 check "cursor object-form model.modelId=composer-2.5 → family cursor, model shown" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *cursor .*model=composer-2.5 (cli-config.json)'"
@@ -166,10 +166,11 @@ check "cursor pinned to a Claude model stays usable under a Claude Lead (family 
 rm -f "$HOME/.config/opencode/opencode.json"; mkdir -p "$HOME/.local/state/opencode"
 printf '{"recent":[{"providerID":"openrouter","modelID":"moonshotai/kimi-k3"}],"favorite":[]}\n' > "$HOME/.local/state/opencode/model.json"
 out=$(bash "$RUNNER" --pool --lead claude)
-check "opencode with no config model falls back to its last-used model (state) → family moonshot" "printf '%s' \"\$out\" | grep -q 'opencode  *usable  *moonshot .*model=openrouter/moonshotai/kimi-k3 (last used'"
+check "opencode with no config model: the pool line says unpinned + the pin hint (headless run ignores the TUI's last-used model)" "printf '%s' \"\$out\" | grep -q 'opencode .*model=unpinned — opencode run picks its own default; pin \"model\" in opencode.json(c)'"
+check "…and a last-used state model.json does not set the family (unknown, never moonshot) nor print the model" "printf '%s' \"\$out\" | grep -q 'opencode  *usable  *unknown ' && ! printf '%s' \"\$out\" | grep -qE 'moonshot|kimi|last used'"
 printf '{ "model": "ollama-cloud/deepseek-v4-pro" }\n' > "$HOME/.config/opencode/opencode.json"
 out=$(bash "$RUNNER" --pool --lead claude)
-check "opencode aggregator id classifies by model name (deepseek) and config beats last-used" "printf '%s' \"\$out\" | grep -q 'opencode  *usable  *deepseek .*model=ollama-cloud/deepseek-v4-pro (config)'"
+check "opencode aggregator id classifies by model name (deepseek) and a pinned config model beats the last-used state" "printf '%s' \"\$out\" | grep -q 'opencode  *usable  *deepseek .*model=ollama-cloud/deepseek-v4-pro (config)'"
 out=$(CURSOR_MODELS_OUT='gpt-5.6-sol-high - GPT-5.6 Sol (current)' bash "$RUNNER" --probe --lead codex 2>/dev/null)  # cursor is pinned to a Claude model here → usable only under a non-Claude Lead
 check "--probe asks the CLI: cursor-agent models '(current' line wins over cli-config.json" "printf '%s' \"\$out\" | grep -q 'default per CLI: gpt-5.6-sol-high (openai) — cli-config.json says claude-sonnet-5-thinking-high; the CLI wins'"
 rm -f "$HOME/.local/state/opencode/model.json"

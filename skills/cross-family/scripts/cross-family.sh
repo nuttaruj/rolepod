@@ -263,35 +263,14 @@ opencode_default_model() {
     [ -n "$_c" ] && [ "$_c" != "/opencode.jsonc" ] && [ "$_c" != "/opencode.json" ] || continue
     _f=$(json_model_field "$_c"); [ -n "$_f" ] && { printf '%s' "$_f"; return; }
   done
-  opencode_last_used_model
-}
-# `opencode models` lists but never marks the default; the CLI remembers the last-used model in its state file.
-opencode_last_used_model() {
-  _s="${XDG_STATE_HOME:-$HOME/.local/state}/opencode/model.json"
-  [ -f "$_s" ] || return 0
-  python3 -I - "$_s" 2>/dev/null <<'PYS'
-import json, sys
-try:
-    r = json.load(open(sys.argv[1], encoding="utf-8")).get("recent") or []
-    m = r[0] if r else {}
-    p, i = m.get("providerID", ""), m.get("modelID", "")
-    print(f"{p}/{i}" if p and i else "")
-except Exception:
-    print("")
-PYS
 }
 # Human note for --pool / --probe: which model the member will run and where that came from.
 describe_default_model() {
   case "$1" in
     cursor) _m=$(cursor_default_model); [ -n "$_m" ] && printf 'model=%s (cli-config.json)' "$_m" || printf 'model=none' ;;
-    opencode) _m=""; for _c in "$ROOT/opencode.jsonc" "$ROOT/opencode.json" \
-            "${OPENCODE_CONFIG_DIR:-}/opencode.jsonc" "${OPENCODE_CONFIG_DIR:-}/opencode.json" \
-            "$HOME/.config/opencode/opencode.jsonc" "$HOME/.config/opencode/opencode.json"; do
-        [ -n "$_c" ] && [ "$_c" != "/opencode.jsonc" ] && [ "$_c" != "/opencode.json" ] || continue
-        _m=$(json_model_field "$_c"); [ -n "$_m" ] && break
-      done
+    opencode) _m=$(opencode_default_model)
       if [ -n "$_m" ]; then printf 'model=%s (config)' "$_m"
-      else _m=$(opencode_last_used_model); [ -n "$_m" ] && printf 'model=%s (last used — pin with "model" in opencode.json(c))' "$_m" || printf 'model=none'; fi ;;
+      else printf 'model=unpinned — opencode run picks its own default; pin "model" in opencode.json(c)'; fi ;;
   esac
 }
 # The model that ACTUALLY ran, from the CLI's own output — per run, per machine, no config guessing:

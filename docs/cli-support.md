@@ -249,7 +249,7 @@ scripts/cross-family.sh --kind critique --brief spec-draft.md          # write-s
 | Claude Code | `claude` | `claude -p --permission-mode plan --no-session-persistence` (prompt on stdin) | anthropic |
 | Antigravity | `agy` | `agy -p "<prompt>" --mode plan --print-timeout <n>s` | google |
 | Cursor | `cursor` | `cursor-agent -p --mode ask --output-format text --trust "<prompt>"` (ask, not plan — plan mode returns an empty stdout for a real brief, v2.128.3) | family of the default model in `~/.cursor/cli-config.json` (`model` string or `model.modelId`; `auto` = family not reported (CLI preset) — used as-is); `--probe` asks `cursor-agent models` for the live `(current, default)` |
-| OpenCode | `opencode` | `opencode run --agent plan "<prompt>"` | family of `model` in `opencode.json(c)`, else of the CLI's last-used model (`~/.local/state/opencode/model.json`), else unknown; aggregator ids (`openrouter/…`, `ollama-cloud/…`) classify by model name |
+| OpenCode | `opencode` | `opencode run --agent plan "<prompt>"` | family of `model` in `opencode.json(c)`, else unknown (unpinned: `opencode run` picks its own default; the TUI's last-used model is not read); aggregator ids (`openrouter/…`, `ollama-cloud/…`) classify by model name |
 
 Gemini CLI is retired for individual accounts (2026-06-18) and never a pool member — a `gemini` pool-file line is skipped; list `agy` instead.
 
