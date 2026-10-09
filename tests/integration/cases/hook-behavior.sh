@@ -1793,6 +1793,36 @@ else echo "  ✓ job finished (status written) → both hooks silent"; fi
 kill "$RF_PID" 2>/dev/null; wait "$RF_PID" 2>/dev/null || true; rm -rf "$RF_TMP"
 
 fi
+# ── no-optional-locks: a read-only hook never rewrites .git/index (a SIGKILLed hook left a stale index.lock) ──
+if section "no-optional-locks: the session-start git status never rewrites the index"; then
+# A tracked file touched to an older mtime makes the index stat-dirty: a plain
+# `git status` would refresh it and write .git/index (taking index.lock). The
+# hook path that reaches it must leave the index bytes + inode untouched and no
+# index.lock behind.
+NL_TMP=$(mktemp -d)
+( cd "$NL_TMP" && git init -q . && git config user.email t@t && git config user.name t \
+  && mkdir -p src && echo 'a' > src/pay.ts && echo 'b' > src/other.ts && git add -A && git commit -qm init )
+nl_sig() { printf '%s %s' "$({ shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } < "$NL_TMP/.git/index" | awk '{print $1}')" "$(ls -i "$NL_TMP/.git/index" | awk '{print $1}')"; }
+NL_N=10  # a fresh mtime each call: re-touching the SAME time after a refresh would not be stat-dirty
+nl_dirty() { NL_N=$((NL_N+1)); touch -t "20200101${NL_N}00" "$NL_TMP/src/pay.ts" "$NL_TMP/src/other.ts"; }
+nl_check() { # $1 label, $2 sig before
+  if [ "$(nl_sig)" = "$2" ] && [ ! -e "$NL_TMP/.git/index.lock" ]; then echo "  ✓ $1: index untouched, no index.lock"
+  else echo "  ✗ $1: index rewritten or index.lock left"; fail=$((fail+1)); fi
+}
+# the harness itself: a plain status on this dirty tree DOES rewrite the index
+nl_dirty; nl_before=$(nl_sig); git -C "$NL_TMP" status --porcelain >/dev/null 2>&1
+if [ "$(nl_sig)" != "$nl_before" ]; then echo "  ✓ fixture: a plain git status rewrites the stat-dirty index"
+else echo "  ✗ fixture: a plain git status left the index alone (test cannot prove anything)"; fail=$((fail+1)); fi
+# Only `git status` honors --no-optional-locks: a worktree `git diff` /
+# `git diff HEAD` (git 2.54) refreshes and rewrites the index regardless of the
+# flag, so the diff-based hooks (gate-reminder, precommit-gate) carry no flag.
+# project-context-loader: `git status --porcelain` dirty count
+nl_dirty; nl_before=$(nl_sig)
+printf '{"cwd":"%s"}' "$NL_TMP" | (cd "$NL_TMP" && HOME="$NL_TMP/home" bash "$HOOKS/project-context-loader.sh") >/dev/null 2>&1 || true
+nl_check "project-context-loader dirty count (git status)" "$nl_before"
+rm -rf "$NL_TMP"
+
+fi
 # ── precommit Standard is silent (spec Desired 1, 2026-09-25) ────────────
 if section "precommit Standard is silent (spec Desired 1)"; then
 SF_TMP=$(mktemp -d)

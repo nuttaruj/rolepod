@@ -16,7 +16,7 @@ cd "$CWD" 2>/dev/null || exit 0
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 NAME=$(basename "$REPO")
 BRANCH=$(git -C "$REPO" branch --show-current 2>/dev/null || echo "?")
-DIRTY=$(git -C "$REPO" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+DIRTY=$(git --no-optional-locks -C "$REPO" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
 COMMITS=$(git -C "$REPO" log -5 --pretty=format:'%h %<(92,trunc)%s' 2>/dev/null | sed 's/[[:space:]]*$//' || echo "")
 HOT=$(git -C "$REPO" log --since="7 days ago" --name-only --pretty=format: 2>/dev/null \
   | grep -v '^$' | sort | uniq -c | sort -rn | head -5 \
