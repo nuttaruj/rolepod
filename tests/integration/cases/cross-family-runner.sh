@@ -53,6 +53,7 @@ LOG="$FIX/calls.log"; : > "$LOG"   # unconditional: some sections read $LOG
 mk_stub() { # $1 binary name, $2 label
   cat > "$BIN/$1" <<EOF
 #!/bin/bash
+if [ "$2" = opencode ] && [ "\$1" = run ] && [ "\${2:-}" = --help ]; then printf '%s\n' "\${OC_HELP-Usage: opencode run --standalone --agent}"; exit 0; fi   # switchable help text; never logged
 _raw=\$(head -c 3000 2>/dev/null)
 _in=\$(printf '%s' "\$_raw" | grep -o 'code reviewer running in a different CLI\|debugging advisor\|spec critic' | head -1)
 _bud=\$(printf '%s' "\$_raw" | grep -o 'Time budget: about [0-9]* minute' | grep -o '[0-9]*')
@@ -61,6 +62,7 @@ _att=\$(printf '%s\n' "\$_raw" | sed -n 's/.*--- attached: \([^ ]*\) .*/\1/p' | 
 _rawflat=\$(printf '%s' "\$_raw" | tr '\n' ' ')
 case "\$_in" in *"code reviewer"*) _in=review ;; *debugging*) _in=consult ;; *critic*) _in=critique ;; *) _in=none ;; esac
 printf '%s | %s | BRAIN=%s | STDIN=%s | BUDGET=%s | ATT=%s | RAW=%s\n' "$2" "\$(printf '%s' "\$*" | tr '\n' ' ')" "\${ROLEPOD_BRAIN_SILENT:-unset}" "\$_in" "\${_bud:-\$_argbud}" "\${_att:-none}" "\$_rawflat" >> "$LOG"
+[ "$2" = opencode ] && printf '%s\n' "\${OPENCODE_CONFIG_CONTENT-<unset>}" >> "$FIX/oc-env.log"
 if [ "\$1" = "models" ]; then printf '%s\n' "\${CURSOR_MODELS_OUT:-auto - Auto (current, default)}"; exit 0; fi
 mode=\$(eval "printf '%s' \"\\\${STUB_$2:-ok}\"")
 [ -n "\${XFAM_STAMP:-}" ] && { echo "S $2" >> "\$XFAM_STAMP"; sleep 3; echo "E $2" >> "\$XFAM_STAMP"; }   # overlap probe: start/end order, no clock
@@ -424,8 +426,78 @@ check "--all runs the members concurrently — all 4 start before the first one 
 [ "$CHECK_OK" -eq 0 ] && echo "    diag: stamps: $(tr '\n' ' ' < "$STAMP")"
 check "--all output carries one ===== block + ok trailer per member" "[ \"\$(printf '%s' \"\$out\" | grep -c '^ROLEPOD-XFAM ok kind=critique')\" -eq 4 ]"
 check "critique lines logged with phase=critique" "[ \"\$(grep -c '\"phase\":\"critique\",\"reviewer\":\"external\"' .rolepod/evidence/phase-log.jsonl)\" -eq 4 ]"
-check "cursor got plan mode + --trust, opencode got --agent plan; neither got a model flag" \
-  "grep '^cursor |' '$LOG' | grep -q -- '--mode ask' && ! grep '^cursor |' '$LOG' | grep -q -- '--mode plan' && grep '^cursor |' '$LOG' | grep -q -- '--output-format stream-json' && grep '^cursor |' '$LOG' | grep -q -- '--trust' && grep '^opencode |' '$LOG' | grep -q -- '--agent plan' && ! grep -E '^(cursor|opencode) \|' '$LOG' | grep -qE -- '--model| -m '"
+check "cursor got ask mode + --trust, opencode got --standalone --agent rolepod-xfam; neither got a model flag" \
+  "grep '^cursor |' '$LOG' | grep -q -- '--mode ask' && ! grep '^cursor |' '$LOG' | grep -q -- '--mode plan' && grep '^cursor |' '$LOG' | grep -q -- '--output-format stream-json' && grep '^cursor |' '$LOG' | grep -q -- '--trust' && grep '^opencode |' '$LOG' | grep -q -- 'run --standalone --agent rolepod-xfam' && ! grep -E '^(cursor|opencode) \|' '$LOG' | grep -qE -- '--model| -m '"
+
+# ── opencode read-only agent (xfam-opencode-readonly) ───────────────────
+fi
+if section "cross-family: opencode read-only agent"; then
+unset OPENCODE_CONFIG_CONTENT
+rm -f "$HOME/.config/opencode/opencode.json" "$HOME/.config/opencode/opencode.jsonc"
+OCENV="$FIX/oc-env.log"
+cat > "$FIX/ocassert.py" <<'PY'
+import json, sys
+c = json.loads(sys.stdin.read().strip().splitlines()[-1])
+a = c["agent"]["rolepod-xfam"]
+p = a["permission"]
+assert a["mode"] == "primary", a
+assert p["*"] == "deny", p
+assert sorted(k for k, v in p.items() if v == "allow") == ["glob", "grep", "list", "read"], p
+PY
+setpool_over 'opencode\n'
+: > "$LOG"; : > "$OCENV"
+rc=0; out=$(bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "help mentions --standalone → opencode got run --standalone --agent rolepod-xfam, no -m / --model" \
+  "[ $rc -eq 0 ] && grep '^opencode |' '$LOG' | grep -q -- 'opencode | run --standalone --agent rolepod-xfam ' && ! grep '^opencode |' '$LOG' | grep -qE -- '--agent plan|--model| -m '"
+check "…its env is a JSON agent: \"*\"=deny and exactly read/grep/glob/list allowed (no bash/edit/write/task/webfetch)" \
+  "python3 -I '$FIX/ocassert.py' < '$OCENV'"
+: > "$LOG"; : > "$OCENV"
+rc=0; out=$(OC_HELP='Usage: opencode run [message..]' bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "help without --standalone → exactly today's run --agent plan, and no OPENCODE_CONFIG_CONTENT in the child env" \
+  "[ $rc -eq 0 ] && grep '^opencode |' '$LOG' | grep -q -- 'opencode | run --agent plan ' && ! grep '^opencode |' '$LOG' | grep -q -- 'rolepod-xfam' && [ \"\$(tail -1 '$OCENV')\" = '<unset>' ]"
+: > "$LOG"; : > "$OCENV"
+rc=0; out=$(OPENCODE_CONFIG_CONTENT=X bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "the caller's own OPENCODE_CONFIG_CONTENT=X → run --agent plan and the child still sees X" \
+  "[ $rc -eq 0 ] && grep '^opencode |' '$LOG' | grep -q -- 'opencode | run --agent plan ' && [ \"\$(tail -1 '$OCENV')\" = 'X' ]"
+: > "$LOG"; : > "$OCENV"
+out=$(bash "$RUNNER" --probe --lead claude 2>&1); rc=$?
+check "--probe uses the same read-only invocation (argv + env)" \
+  "[ $rc -eq 0 ] && grep '^opencode |' '$LOG' | grep -q -- 'opencode | run --standalone --agent rolepod-xfam ' && python3 -I '$FIX/ocassert.py' < '$OCENV'"
+out=$(bash "$RUNNER" --pool --lead claude 2>&1)
+check "--pool row names the agent: agent=rolepod-xfam (read-only)" "printf '%s' \"\$out\" | grep -q 'opencode .*agent=rolepod-xfam (read-only)'"
+out=$(OC_HELP='Usage: opencode run' bash "$RUNNER" --pool --lead claude 2>&1)
+check "--pool row, old opencode: agent=plan (fallback: no --standalone)" "printf '%s' \"\$out\" | grep -q 'opencode .*agent=plan (fallback: no --standalone)'"
+out=$(OPENCODE_CONFIG_CONTENT=X bash "$RUNNER" --pool --lead claude 2>&1)
+check "--pool row, caller env set: agent=plan (fallback: OPENCODE_CONFIG_CONTENT set)" "printf '%s' \"\$out\" | grep -q 'opencode .*agent=plan (fallback: OPENCODE_CONFIG_CONTENT set)'"
+
+# a failing member says why on stderr at once, before the next member's → line
+setpool_over 'codex\nopencode\n'
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(STUB_codex=fail bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>"$FIX/fg.err") || rc=$?
+check "first member fails, second answers → stderr '✗ codex:' + reason sits between the two → lines" \
+  "[ $rc -eq 0 ] && awk '/^→ /{n++} /^  ✗ codex: exit 1 — auth error/{ if (n==1) ok=1 } END{ exit !(ok && n==2) }' '$FIX/fg.err'"
+check "…and stdout's last line is still the ROLEPOD-XFAM ok receipt" "[ \"\$(printf '%s\n' \"\$out\" | tail -1 | cut -c1-16)\" = 'ROLEPOD-XFAM ok ' ]"
+check "…a codex failure prints no opencode pin hint" "! grep -q 'pin \"model\"' '$FIX/fg.err'"
+setpool_over 'opencode\ncodex\n'
+rc=0; out=$(STUB_opencode=fail bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>"$FIX/fg.err") || rc=$?
+check "opencode fails with no model pinned → '  ✗ opencode:' then the pin hint line, before codex's →" \
+  "[ $rc -eq 0 ] && awk '/^→ /{n++} /^  ✗ opencode: /{ if (n==1) a=1 } /^    pin \"model\" in opencode.json\(c\) — opencode run picks its own default\$/{ if (a && n==1) ok=1 } END{ exit !(ok && n==2) }' '$FIX/fg.err'"
+printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json"
+rc=0; out=$(STUB_opencode=fail bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>"$FIX/fg.err") || rc=$?
+check "opencode fails with a model pinned → the ✗ line, no pin hint" "[ $rc -eq 0 ] && grep -q '^  ✗ opencode: ' '$FIX/fg.err' && ! grep -q 'pin \"model\"' '$FIX/fg.err'"
+rm -f "$HOME/.config/opencode/opencode.json"
+
+# --setup: one guidance line when opencode is in the order and unpinned
+rm -f "$HOME/.rolepod/config.json"   # not droppool: the base pool stays for restorepool
+out=$(bash "$RUNNER" --setup review="opencode codex" --lead claude 2>&1); rc=$?
+check "--setup review with opencode, no model pinned → one hint line, exit 0" "[ $rc -eq 0 ] && [ \"\$(printf '%s\n' \"\$out\" | grep -c 'pin \"model\" in opencode.json(c)')\" -eq 1 ]"
+printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json"
+out=$(bash "$RUNNER" --setup review="opencode codex" --lead claude 2>&1); rc=$?
+check "--setup with opencode pinned → no hint" "[ $rc -eq 0 ] && ! printf '%s' \"\$out\" | grep -q 'pin \"model\"'"
+rm -f "$HOME/.config/opencode/opencode.json"
+out=$(bash "$RUNNER" --setup review="codex agy" --lead claude 2>&1); rc=$?
+check "--setup without opencode in the order → no hint" "[ $rc -eq 0 ] && ! printf '%s' \"\$out\" | grep -q 'pin \"model\"'"
+restorepool
 
 # ── critique kind (write-spec) ──────────────────────────────────────────
 fi

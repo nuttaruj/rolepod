@@ -303,6 +303,23 @@ bin_of() {
   esac
 }
 LEAD_FAMILY=$(family_of "$LEAD")
+# opencode's own `plan` agent still runs bash and carries every MCP tool in each request; a
+# read-only agent defined inline ("*" deny, read/grep/glob/list allowed) has neither. The inline
+# config needs --standalone (the background service never reads the client's env), and a user's
+# own OPENCODE_CONFIG_CONTENT is never overwritten → both cases keep the plain `--agent plan`.
+OC_CONFIG='{"agent":{"rolepod-xfam":{"mode":"primary","description":"rolepod cross-family reviewer: read-only","permission":{"*":"deny","read":"allow","grep":"allow","glob":"allow","list":"allow"}}}}'
+OC_FORM=""   # detected once per process: "xfam" or "plan:<fallback reason>"
+detect_opencode_form() {
+  [ -z "$OC_FORM" ] || return 0
+  _ob=$(bin_of opencode); _oh=""
+  [ -n "$_ob" ] && _oh=$("$_ob" run --help </dev/null 2>&1)
+  if [ -n "${OPENCODE_CONFIG_CONTENT+x}" ]; then OC_FORM="plan:OPENCODE_CONFIG_CONTENT set"
+  else case "$_oh" in *--standalone*) OC_FORM=xfam ;; *) OC_FORM="plan:no --standalone" ;; esac; fi
+}
+opencode_agent_note() {
+  detect_opencode_form
+  case "$OC_FORM" in xfam) printf 'agent=rolepod-xfam (read-only)' ;; *) printf 'agent=plan (fallback: %s)' "${OC_FORM#plan:}" ;; esac
+}
 
 # ── Candidates (EVERY installed CLI, the Lead's own included) — the opt-in question.
 # The file is Lead-independent: list them all once; whichever CLI is the Lead is
@@ -389,6 +406,7 @@ except OSError:
 PYS
   _src=$?; [ "$_src" -eq 0 ] || exit 2
   echo "written: the machine pool setting"; echo "  review: $_rv"
+  case " $_rv " in *" opencode "*) [ -z "$(opencode_default_model)" ] && echo '  hint: opencode has no pinned "model" — it runs its own default; pin "model" in opencode.json(c)' ;; esac
   exit 0
 fi
 
@@ -483,6 +501,7 @@ if [ "$STATE" != "on" ]; then
   if [ "$STATE" = "none" ]; then POOL_ROWS="-  off  -  cross-family disabled: $CFG_SRC"
   else POOL_ROWS="-  off  -  cross-family is OPT-IN and not enabled on this machine ($CFG_SRC)"; fi
 else
+  case " $CONFIGURED " in *" opencode "*) [ -n "$(bin_of opencode)" ] && detect_opencode_form ;; esac   # main shell, so the result is cached
   for cli in $CONFIGURED; do
     case " $ALL_CLIS " in *" $cli "*) ;; *) POOL_ROWS="$POOL_ROWS
 $cli  skipped  -  unknown CLI name in $CFG_SRC"; continue ;; esac
@@ -494,6 +513,7 @@ $cli  absent  -  not on PATH"; continue; fi
 $cli  skipped  $fam  is the Lead"; continue; fi
     note="bin=$bin · timeout=$(timeout_for "$cli")s · stall=$(stall_for "$cli")s"
     case "$cli" in cursor|opencode) note="$note · $(describe_default_model "$cli")" ;; esac
+    [ "$cli" = "opencode" ] && note="$note · $(opencode_agent_note)"
     if [ "$fam" = "unknown" ]; then
       note="$note · family not reported (CLI preset) — used as-is"
     fi
@@ -594,7 +614,9 @@ invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this 
     # detector could not see it working; the stream also names the model.
     cursor)   run_to "$_o" "$_bin" -p --mode ask --output-format stream-json --trust "$(cat "$_p")"; _rc=$?
               cursor_unwrap "$_o"; return $_rc ;;
-    opencode) run_to "$_o" "$_bin" run --agent plan "$(cat "$_p")" ;;
+    opencode) detect_opencode_form
+              if [ "$OC_FORM" = xfam ]; then run_to "$_o" env OPENCODE_CONFIG_CONTENT="$OC_CONFIG" "$_bin" run --standalone --agent rolepod-xfam "$(cat "$_p")"
+              else run_to "$_o" "$_bin" run --agent plan "$(cat "$_p")"; fi ;;
     *) return 2 ;;
   esac
 }
@@ -932,6 +954,8 @@ for c in $USABLE; do
   one "$c"; _ok=$?
   [ -f "$TMPP/$c.jsonl" ] && jlog "$(cat "$TMPP/$c.jsonl")"
   if [ "$_ok" -eq 0 ]; then cat "$TMPP/$c.out"; echo; cat "$TMPP/$c.line"; exit 0; fi
+  printf '  ✗ %s\n' "$(head -n 1 "$TMPP/$c.line")" >&2
+  [ "$c" = "opencode" ] && [ -z "$(opencode_default_model)" ] && echo '    pin "model" in opencode.json(c) — opencode run picks its own default' >&2
   FAILS="$FAILS${FAILS:+; }$(cat "$TMPP/$c.line")"
 done
 echo "ROLEPOD-XFAM none — $FAILS. Fall back to the internal strong reviewer / vertical consult and record the limitation."
