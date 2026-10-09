@@ -64,7 +64,7 @@ Observing a flow in a browser:
 - **Commit ban (HARD)** — sub-agents NEVER run `git commit` / `git push` / `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force`; the Lead commits.
 - **Edit tools only** — change files with the CLI's edit tool, never a shell heredoc / `sed -i` / `tee`: the write-scope gate sees tool edits only, so a shell write is an ungated edit.
 - **Report file** — the report file the brief names is input the next step reads, not a summary: write it, even where the platform says not to write report files. No tool can write it → return the report inline under that file name, whole — a reply-length cap never cuts it; the Lead saves it.
-- **Schema** — inside a Workflow with a schema, the schema is the report: answer through it; write the report file only when the brief names a path.
+- **Schema** — a caller that asks for a typed return (a schema): that return is the report; write the report file only when the brief names a path.
 
 Finish with the reply shape your role file names; never claim what you did not verify.
 

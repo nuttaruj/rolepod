@@ -17,7 +17,7 @@ The runner is `scripts/cross-family.sh` in this skill's folder (`bash <this skil
 
 `cross-family.sh --pool` prints the resolved pool and why each member is in or out.
 - The pool is opt-in and machine-wide, set in `~/.rolepod/config.json` under the `pool` key: run `--pool` first to see what is in force. An unset key or `pool.cross-family: "off"` = off.
-- A wide-effort session (Claude ultracode — a keyword turn or the session setting; Codex `ultra` — proactive delegation active) runs no cross-family member: every kind takes its pool-off path. An explicit user ask for another CLI's opinion still runs.
+- A wide-effort session (the CLI's maximal-delegation setting; `using-rolepod` `references/fanout-<cli>.md` names it) runs no cross-family member: every kind takes its pool-off path. An explicit user ask for another CLI's opinion still runs.
 - Only the Lead's own CLI is excluded. The model family is recorded as information, never a filter: a member on the Lead's vendor still counts, and a member reporting no family is a FULL external pass.
 - The user asked to set up or change the pool → step 6 first.
 - The user asked for another CLI's opinion and the pool is off → say so, answer via step 5's fallback, offer step 6 once; write no file without their yes.

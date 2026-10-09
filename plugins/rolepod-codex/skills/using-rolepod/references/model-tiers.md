@@ -41,7 +41,7 @@ The Lead picks the class at dispatch; escalate on a BLOCKED redispatch, a user a
 - One strong slot per fleet: sweep = cheap · mechanical build = cheap · logic build = balanced · per-item verify = cheap at high effort when a command settles it, else balanced at high effort · the ONE judge or security reviewer = strong.
 - Never inherit the Lead's model across a fleet (one exception: several plans at once → `write-plan` `references/edge-cases.md`); never pin strong on a fan-out (price × N).
 - A stage that writes uses the role's instructions. Prefer the CLI's native named role; portable transport and Lead fallback are defined above. A fan-out uses the role's model tier where the CLI exposes that control.
-- Mechanics live in your CLI's `references/fanout-<cli>.md` (Claude: `fanout-claude.md`, Codex: `fanout-codex.md`); no file for your CLI → dispatch roles one at a time.
+- Mechanics live in your CLI's `references/fanout-<cli>.md`; no file for your CLI → dispatch roles one at a time.
 
 **Retry-at-higher-effort (checkable stages).** When a stage's outcome is
 mechanically checkable (tests, verifier, schema), dispatch it at LOW effort
@@ -58,7 +58,7 @@ ladder is for depth gaps — try the cheaper rung first.
 
 ## Wide-effort profile
 
-A wide-effort setting widens breadth inside the tier; it never adds a tier, a round or a strong slot.
+A wide-effort session is the CLI's maximal-delegation setting; its `references/fanout-<cli>.md` names it. A wide-effort setting widens breadth inside the tier; it never adds a tier, a round or a strong slot.
 
 - A wide-effort session runs no cross-family member (`cross-family` step 1).
 - R1/R2 get at most one fleet: the one `convening-code-review` round for the tier, with a command or balanced refuter per MAJOR finding.

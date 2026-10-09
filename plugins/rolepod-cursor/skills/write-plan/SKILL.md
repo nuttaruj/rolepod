@@ -101,7 +101,7 @@ Done when: every applicable section is filled, and a saved plan passes step 7's 
 ## Guardrails
 
 - The plan names the files, the order and the verification per task before any edit. Never start editing earlier.
-- Parallel writers on one feature work under a written ownership map pinning file ownership and merge order — a cohesion contract, or a Workflow script that gives each writer a disjoint slice. Never spawn a second writer without one; read-only fleets are exempt.
+- Parallel writers on one feature work under a written ownership map pinning file ownership and merge order — a cohesion contract, or a scripted fan-out that gives each writer a disjoint slice. Never spawn a second writer without one; read-only fleets are exempt.
 
 ## Next phase
 

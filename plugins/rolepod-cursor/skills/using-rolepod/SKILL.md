@@ -86,7 +86,7 @@ Done when: the route is stated (R2 and up), the named skill is loaded and its ow
 
 ## Stop conditions
 
-- A 2nd parallel writer without an ownership map → `write-plan` first. A Workflow script that gives each writer a disjoint slice is its own map; read-only fleets are exempt.
+- A 2nd parallel writer without an ownership map → `write-plan` first. A scripted fan-out that gives each writer a disjoint slice is its own map; read-only fleets are exempt.
 
 High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`). A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
 

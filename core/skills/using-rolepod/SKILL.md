@@ -86,7 +86,7 @@ Done when: the route is stated (R2 and up), the named skill is loaded and its ow
 
 ## Stop conditions
 
-- A 2nd parallel writer without an ownership map → `write-plan` first. A Workflow script that gives each writer a disjoint slice is its own map; read-only fleets are exempt.
+- A 2nd parallel writer without an ownership map → `write-plan` first. A scripted fan-out that gives each writer a disjoint slice is its own map; read-only fleets are exempt.
 
 {{INCLUDE: core/fragments/risk-paths.md}}
 

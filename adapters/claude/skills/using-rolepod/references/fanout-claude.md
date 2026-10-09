@@ -2,7 +2,7 @@
 
 # Fan-out mechanics on Claude Code
 
-A Workflow script fans out with `agent()` / `pipeline()`; ultracode is the `/effort` setting that makes a Workflow the default for substantive work. The tier per stage is `model-tiers.md` Fleets; this file is how to write it.
+A Workflow script fans out with `agent()` / `pipeline()`; ultracode is the `/effort` setting that makes a Workflow the default for substantive work. The tier per stage is `model-tiers.md` Fleets; this file is how to write it. Wide-effort session here = ultracode: a keyword turn or the `/effort ultracode` session setting.
 
 ## Pin every stage
 

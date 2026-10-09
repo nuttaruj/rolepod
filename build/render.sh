@@ -117,8 +117,10 @@ render_agents() {
 # fragment instead of restating it. A SKILL.md with no directive renders
 # byte-identical, so this is a safe no-op for skills that include nothing.
 
+# Optional 2nd arg: adapter name whose adapters/<name>/skills/ overlays the output.
 render_skills() {
   local skills_dst="$1"
+  local overlay_target="${2:-}"
   mkdir -p "$skills_dst"
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     local name; name="$(basename "$skill_dir")"
@@ -144,6 +146,11 @@ render_skills() {
     [ -f "$skill_dir/SKILL.md" ] && \
       render_template "$skill_dir/SKILL.md" "$skills_dst/$name/SKILL.md"
   done
+  # Per-CLI overlay: adapters/<target>/skills/ copies over the rendered tree, so
+  # CLI-only references (fan-out mechanics) ship in that CLI's bundle alone.
+  if [ -n "$overlay_target" ] && [ -d "$REPO_DIR/adapters/$overlay_target/skills" ]; then
+    cp -R "$REPO_DIR/adapters/$overlay_target/skills/." "$skills_dst/"
+  fi
 }
 
 # ─── Strip skill frontmatter to name + description (+ extra keep keys) ──────
@@ -227,7 +234,7 @@ render_claude() {
   render_agents "claude" "$plugin_dst/agents"
 
   # Skills as a real directory tree (rendered from core/skills/).
-  render_skills "$plugin_dst/skills"
+  render_skills "$plugin_dst/skills" claude
 
   # Hooks: hooks/hooks.json config (canonical plugin-root form) + 6 core
   # scripts + lib/ helpers.
@@ -349,7 +356,7 @@ render_codex() {
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
   # Skills as a real directory tree (rendered from core/skills/).
-  render_skills "$plugin_dst/skills"
+  render_skills "$plugin_dst/skills" codex
 
   # Codex's own explicit-invoke mechanism: a skill whose core SKILL.md
   # frontmatter carries `disable-model-invocation: true` gets an

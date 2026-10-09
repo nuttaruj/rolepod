@@ -2,7 +2,7 @@
 
 # Fan-out mechanics on Codex
 
-A Codex Lead fans out with `spawn_agent` and collects with `wait_agent`. The tier per stage is `model-tiers.md` Fleets; this file is how to spawn it.
+A Codex Lead fans out with `spawn_agent` and collects with `wait_agent`. The tier per stage is `model-tiers.md` Fleets; this file is how to spawn it. Wide-effort session here = `ultra`: proactive delegation active.
 
 ## Spawn a rolepod role
 
