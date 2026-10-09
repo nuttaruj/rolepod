@@ -1,0 +1,1807 @@
+#!/bin/bash
+# plan-lint — deterministic lint of a filled plan artifact, plus the
+# cohesion contract when the plan declares a parallel layout. The
+# mechanical arm of write-plan Self-review.
+#
+# Usage: scripts/plan-lint.sh <plan.md> [contract.md]
+#   The contract argument is optional — when omitted, the script looks for
+#   a backticked *.md path inside the plan's "## Parallel layout" section
+#   (resolved against the plan's directory, then the repo root). A plan
+#   whose Parallel layout says "Sequential" skips the ownership check.
+#
+# Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md] [--main] [--plan-worktree]
+#   Prints Task N's brief to stdout, assembled from the plan (and the
+#   contract's File-ownership + Do-not-touch-list when one is given), in
+#   this order: Worktree or Checkout, Goal, Tier, Blocked by, Read first,
+#   Files allowed, Files forbidden (only when a cohesion contract exists), Change, Test / evidence, Expected
+#   failing signal (only when the task has one), Command, Proof, Done
+#   when, On fail (only when the task has one), Write, Reviewers, Bounds —
+#   ONE test field, the Command; an older plan's Check: line is read and
+#   ignored, never printed (spec lean-loop-2026-09-23 Task 2).
+#   Reviewers prints one cell of the review set (C61; core/fragments/review-set.md)
+#   for the task's mode x tier: R1 none; an R2/R3/R4 task
+#   `none` (its track's track-end review covers it) unless it is its track's only
+#   code task — then its own cell. Round mechanics live in convening-code-review, never here.
+#   `--plan-worktree`: the task runs in the plan worktree (branch
+#   <feature>/plan, path ../<repo>-wt-<feature>) — Worktree and Bounds
+#   follow from it.
+#   `--main`, in any position after --brief: an on-main task, no
+#   worktree — prints `## Checkout` in place of `## Worktree`, and Bounds
+#   names no worktree path either. Exit 0 on success; exit 2 with one
+#   stderr line and empty stdout when Task N does not exist, and likewise
+#   (`missing Files: Task N: ...`, the plain lint's message) when Task N has
+#   no `Files:` line — no brief is printed for it. Field labels
+#   match with or without `**bold**` (real plans use both dialects).
+#
+# Usage: scripts/plan-lint.sh --review-set --tier <R1|R2|R3|R4> [--mode <m>] [--match <perf,ui,arch>]
+#   Prints one line, `Review: <cell>` — the same cell --brief prints (one function).
+#   Mode: --mode (a value outside lite / standard / full → lite), else the --brief
+#   resolver, else lite. A missing or unknown --tier or --match token → one usage
+#   line on stderr, exit 2, empty stdout.
+#
+# Checks:
+#   1. `## Failure policy` section present (the loop's circuit breaker).
+#   2. Every task block carries a `Command:` (loop-runnable). A task heading
+#      is `### Task N:` or `### TN —` — both shapes appear in real plans.
+#   2b. Every task block carries a `Files:` line — a Files-less task FAILs
+#      (`missing Files: Task N: ...`), since its owner would have no Files allowed.
+#   3. Blocked-by graph (v2.90.0): every task carries `Blocked by:`, every
+#      reference resolves to a task in this plan, and the graph has no cycle.
+#      The graph IS the plan's order; a Sequential plan whose graph has more
+#      than one root gets an advisory naming the parallel candidates.
+#      A plan with NO Blocked-by fields at all (pre-v2.90.0) is advised, not
+#      failed — order was prose there.
+#      A Blocked by value that is not none-ish yet names no task (prose such
+#      as `after Task 3 lands`, a leftover placeholder, an empty value) gets an
+#      advisory, since that task would look unblocked.
+#   4. Tracks (only when the plan has `## Tracks` or a `**Track:**` field):
+#      every task names a track listed there; two tasks that edit one file
+#      share a track; Blocked by crosses tracks only at a track first task.
+#      `--brief` then prints the track branch and worktree for a track task
+#      and Reviewers `none — the track-end review covers this task` for R2/R3/R4
+#      (its own review-set cell when it is the track's only code task).
+#      A non-Sequential plan with no `## Tracks` fails when two tasks share a
+#      file or one is Blocked by another (each task would be its own track).
+#   5. Parallel plans only: every path in the leading list of any task's Files
+#      field (Files forbidden reads the same list; Files allowed alone also keeps
+#      a note companion) appears under EXACTLY one owner in the contract's "## File ownership"
+#      — an unowned file is unplannable work; a dual-owned file is a merge
+#      conflict on schedule.
+#   3c. Plain lint only: a task that is R4 by a risk path (the --brief tier rule:
+#      risk-path Files, the prose filter, .rolepod/risk-paths) while no line under
+#      `## High-risk surfaces touched` names it FAILs, one line per task. `--brief` never fails on it.
+#
+# Advisories (v2.144.0, never a FAIL — a Sequential plan may be legitimate):
+#   a. Prefactor smell: a backticked path on the `Files:` line of >= 2 tasks
+#      with no dependency path between them (neither blocks the other,
+#      directly or transitively) in the Blocked-by graph.
+#   b. Nothing to dispatch: a plan of >= 3 tasks whose every `Owner:` line
+#      names Lead (plain, with an aside, or a role tagged "Lead self-do").
+#
+# Exit 0 = pass. Exit 1 = fail, every violation named on stdout.
+set -uo pipefail
+
+# Task heading regex — shared by the graph/Command checks below AND by
+# --brief (reused, not re-parsed, so both read the same task shape).
+TASK_RX='^### (Task ?|T)[0-9]+'
+
+# Cleans a Files-field value for path extraction — a `(` / `)` opens or
+# closes a note ONLY when it is outside a backtick span, so a path that
+# is itself backticked keeps its own parens intact (Next.js / Expo
+# route groups: `app/(auth)/login/page.tsx`). Outside a backtick span, a
+# bare `(` opens a note only at the start of the value or right after
+# whitespace or a comma; right after `/` or a word character it is part
+# of a bare path (`app/(auth)/login/page.tsx` with no backticks at all)
+# and is kept literally, together with its matching `)` — tracked on a
+# stack so a path-embedded paren and a real note can nest either way.
+# Inside a note, a bare (non-backticked) token is dropped outright; a
+# backticked token counts only when `notekeep` is true AND it has a
+# slash — a path fragment already named elsewhere (e.g. "`x.py` (`helper()`
+# only)" drops `helper()`, but "(+ `tests/static/x.sh`)" keeps
+# `tests/static/x.sh` when notekeep=1). `--brief`'s per-task Files value
+# passes notekeep=1 (a note may legitimately add a companion path); the
+# plain lint path's check 5 (every task Files field) passes notekeep=0 — a
+# note there is read against the contract's exact ownership strings, so
+# an explanatory aside ("moved from the old `agent-frontmatter/` dir")
+# must never masquerade as a second file to own (always-on-core-lean
+# follow-up). Shared by both parsers — never a second parser.
+# shellcheck disable=SC2016
+CLEANFILES_AWK='
+function cleanfiles(s, notekeep,    out, i, c, prevc, depth, inbt, notebt, bt, sp, stk, isnote) {
+  out = ""; depth = 0; inbt = 0; bt = ""; sp = 0
+  for (i = 1; i <= length(s); i++) {
+    c = substr(s, i, 1)
+    if (c == "`") {
+      if (inbt) {
+        bt = bt c
+        if (notebt) { if (notekeep && bt ~ /\//) out = out bt } else out = out bt
+        inbt = 0; bt = ""
+      } else { inbt = 1; notebt = (depth > 0); bt = c }
+      continue
+    }
+    if (inbt) { bt = bt c; continue }
+    if (c == "(") {
+      prevc = (i == 1) ? "" : substr(s, i - 1, 1)
+      isnote = (i == 1 || prevc ~ /[[:space:]]/ || prevc == ",")
+      stk[++sp] = isnote
+      if (isnote) depth++
+      else if (depth == 0) out = out c
+      continue
+    }
+    if (c == ")") {
+      if (sp > 0) {
+        isnote = stk[sp]; sp--
+        if (isnote) { if (depth > 0) depth-- }
+        else if (depth == 0) out = out c
+      } else if (depth == 0) out = out c
+      continue
+    }
+    if (depth > 0) continue
+    out = out c
+  }
+  if (inbt) out = out bt
+  return out
+}
+# The paths one Files-field line names, newline-joined: only its leading path
+# list counts. cleanfiles(s, 0) drops every `( ... )` note, then a dash aside
+# (` — ` / ` – ` to the end of the line, or a line opening with one) is cut, so
+# commentary such as "— bumps `v2.147.0`, reads `KIND`" never adds a path. In
+# what is left every backticked span is a path (a dotless `Makefile` or
+# `CODEOWNERS` too); a bare token takes the path filter: a slash, an extension,
+# a Capitalised-then-lowercase name (Makefile, Dockerfile) or a well-known
+# all-caps root file. The one reader of "which files does this task name" for
+# check 5 and --brief Files forbidden, so the two always agree.
+# NEEDS FIELD_AWK loaded too: it calls filepaths(), and awk rejects an undefined
+# function at parse time.
+function taskpaths(s,    fp, n, i, p, out, m, c) {
+  c = cleanfiles(s, 0); out = ""
+  # tpaside (global): this line opened an aside, so the caller ends the field
+  # there and later continuation lines add no paths.
+  tpaside = sub(/(^|[[:space:]])(—|–)([[:space:]].*)?$/, "", c)
+  m = c
+  while (match(m, /`[^`]+`/)) { out = out substr(m, RSTART + 1, RLENGTH - 2) "\n"; m = substr(m, RSTART + RLENGTH) }
+  gsub(/`[^`]+`/, " ", c)
+  n = filepaths(c, fp)
+  for (i = 1; i <= n; i++) {
+    p = fp[i]
+    if (p ~ /\// || p ~ /\.[A-Za-z][A-Za-z0-9]*$/ || p ~ /^[A-Z][a-z][A-Za-z0-9_-]*$/ || p ~ /^(README|LICENSE|CHANGELOG|CONTRIBUTING|AUTHORS|NOTICE|COPYING)$/) out = out p "\n"
+  }
+  return out
+}
+'
+
+# Fence rule (templates/cohesion-contract-template.md): a line whose text, after at most 3
+# leading spaces, opens with 3+ backticks or tildes opens a fence; it closes
+# at the first later line whose (likewise up-to-3-space-indented) run of the
+# SAME character is at least as long. Every line from the opening delimiter
+# to the closing one, both included, is literal — it never matches a task
+# heading, a `## ` heading, a field line or a checkbox. An unclosed fence
+# runs to end of file; fence_is_open() / fence_open_line() let the caller
+# report that. State resets on FNR==1 so one awk invocation reading two
+# files (the `FNR == NR` plan-then-contract pattern used by --brief) never
+# leaks fence state from one file into the other. No `{n,m}` interval —
+# mawk has none — lengths are counted with a loop. A trailing `\r` (a
+# CRLF-saved plan) is stripped before any of it is read, so a Windows line
+# ending never widens or narrows a fence run. Shared by every awk pass in
+# this script that reads a plan or a contract — never a second parser.
+# shellcheck disable=SC2016
+FENCE_AWK='
+function leadspaces(s,    i, c, n) {
+  n = 0
+  for (i = 1; i <= length(s); i++) {
+    c = substr(s, i, 1)
+    if (c == " ") n++
+    else break
+  }
+  return n
+}
+function fenceline(line,    lead, rest, ch, n, i, c, after) {
+  if (FNR == 1) { infence = 0; fencechar = ""; fencelen = 0; fenceopen = 0 }
+  sub(/\r$/, "", line)
+  lead = leadspaces(line)
+  rest = substr(line, lead + 1)
+  if (infence) {
+    if (lead <= 3) {
+      ch = substr(rest, 1, 1)
+      if (ch == fencechar) {
+        n = 0
+        for (i = 1; i <= length(rest); i++) { c = substr(rest, i, 1); if (c == fencechar) n++; else break }
+        if (n >= fencelen) {
+          after = substr(rest, n + 1)
+          gsub(/[ \t]/, "", after)
+          if (after == "") { infence = 0; fencechar = ""; fencelen = 0; fenceopen = 0 }
+        }
+      }
+    }
+    return 1
+  }
+  if (lead <= 3) {
+    ch = substr(rest, 1, 1)
+    if (ch == "`" || ch == "~") {
+      n = 0
+      for (i = 1; i <= length(rest); i++) { c = substr(rest, i, 1); if (c == ch) n++; else break }
+      if (n >= 3) { fencechar = ch; fencelen = n; infence = 1; fenceopen = FNR; return 1 }
+    }
+  }
+  return 0
+}
+function fence_is_open() { return infence }
+function fence_open_line() { return fenceopen }
+'
+
+# One copy of the field helpers every awk pass below shares (trim, fieldgate,
+# fieldval, fieldbody, blockedrefs, filepaths — the Files and Blocked-by
+# parsing). A field is only a line whose (left-trimmed) start is a bullet —
+# dash OR asterisk — an optional checkbox, then the label. The bullet char is
+# consumed BEFORE bold asterisks are stripped: a whole-line gsub(/\*/) first
+# would eat an asterisk BULLET along with the bold markers, making a
+# "* Label:" line unreachable — and would let prose that merely quotes
+# "Label:" elsewhere on the line pass.
+# shellcheck disable=SC2016
+FIELD_AWK='
+function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
+function fieldgate(line, name,    g) {
+  g = line; sub(/^[[:space:]]+/, "", g)
+  if (g !~ /^[-*]/) return 0
+  g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
+  return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
+}
+function fieldval(line, name,    v) {
+  v = line; gsub(/\*/, "", v); v = trim(v); sub(/^[-*][[:space:]]*/, "", v)
+  sub(/^(\[[ xX]\][[:space:]]*)?[A-Za-z ]+:[[:space:]]*/, "", v)
+  return trim(v)
+}
+# The raw value after a field label on its (already fieldgate-d) line — the
+# bullet, checkbox and bold markers off the front, the value itself untouched
+# (a glob like `src/**/*.ts` keeps its asterisks). `\**` (not an interval
+# expression) so old awks read it too.
+function fieldbody(line, name) {
+  sub("^[[:space:]]*[-*][[:space:]]*(\\[[ xX]\\][[:space:]]*)?\\**" name "\\**:\\**[[:space:]]*", "", line)
+  return line
+}
+# The one home of the Blocked-by rule (ticket.sh carries the same function as
+# blocked_ids): the asides off (`( ... )`, a trailing dash aside, anything from
+# the first `;`), then ONLY the leading list of task refs — a first
+# `(Task|Tasks|T)N`, then items `N`, `(Task ?|T)N` or a range `N-M`, joined by
+# `,`, `and`, `&`, `+` or the Thai "and" (octal bytes, portable to BSD awk).
+# Stops at the first token outside that shape. Returns the ids, space-joined;
+# callers pull the integers out of the result.
+function blockedrefs(v,    out, first, item, s0, lo, hi, dash, j, th, rangecap) {
+  th = "\340\271\201\340\270\245\340\270\260"
+  # a reversed or absurdly wide range (a typo such as 1-99999) is one ref, not a flood
+  rangecap = 999
+  gsub(/\([^)]*\)/, "", v)
+  sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
+  sub(/;.*$/, "", v)
+  sub(/^[[:space:]]+/, "", v)
+  out = ""; first = 1
+  while (1) {
+    if (first) { if (!match(v, /^(Tasks? ?|T)[0-9]+(-[0-9]+)?/)) break }
+    else if (!match(v, /^(Tasks? ?|T)?[0-9]+(-[0-9]+)?/)) break
+    item = substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH)
+    sub(/^(Tasks? ?|T)/, "", item)
+    dash = index(item, "-")
+    if (dash == 0) out = out (out == "" ? "" : " ") item
+    else {
+      lo = substr(item, 1, dash - 1) + 0; hi = substr(item, dash + 1) + 0
+      if (hi < lo || hi - lo > rangecap) hi = lo
+      for (j = lo; j <= hi; j++) out = out (out == "" ? "" : " ") j
+    }
+    first = 0
+    s0 = v
+    sub(/^[[:space:]]*,[[:space:]]*/, "", v)
+    sub("^[[:space:]]*(&|\\+|and[[:space:]]|" th ")[[:space:]]*", "", v)
+    if (v == s0) break
+  }
+  return out
+}
+# Every path on a Files value into out[1..n] (returns n): backticked spans
+# first, then bare comma/space-separated tokens that look like a path (a slash,
+# or a dot + alnum extension); placeholders ("<paths>") and and/or are dropped.
+function filepaths(v, out,    m, rest, toks, nt, i, t, n) {
+  n = 0; m = v
+  while (match(m, /`[^`]+`/)) { out[++n] = substr(m, RSTART + 1, RLENGTH - 2); m = substr(m, RSTART + RLENGTH) }
+  rest = v; gsub(/`[^`]+`/, " ", rest); nt = split(rest, toks, /[,[:space:]]+/)
+  for (i = 1; i <= nt; i++) {
+    t = toks[i]; gsub(/[,;)]+$/, "", t)
+    if (t == "" || t ~ /^</ || t ~ /^([Aa]nd|[Oo]r)$/) continue
+    if (t ~ /\// || t ~ /\.[[:alnum:]]+$/) out[++n] = t
+  }
+  return n
+}
+'
+
+# Tracks (spec worktree-track-2026-09-30): the `## Tracks` section — one line
+# per track, `- A — <short name>: Task 1, Task 2 · branch <feature>/a-<slug>` —
+# and each task `- **Track:** A` field. One parser for both callers, told
+# apart by -v mode: `brief` prints the branch of task `want` (nothing when
+# the plan has no `## Tracks` or the task names no listed track), `lint`
+# prints one `E ...` line per violation and one `OK ...` line when the plan
+# has tracks and none is broken. -v feature = the plan file name without its
+# date. Runs with CLEANFILES_AWK and FENCE_AWK prepended.
+# shellcheck disable=SC2016
+TRACKS_AWK='
+function tslug(x,   t, n, a, k, o, w) {
+  t = tolower(x); gsub(/[^a-z0-9]+/, "-", t); gsub(/^-+|-+$/, "", t)
+  n = split(t, a, "-"); o = ""
+  for (k = 1; k <= n && split(o, w, "-") < 3; k++) {
+    if (a[k] == "" || a[k] ~ /^(the|a|an|of|to|in|for|and|on|is|with)$/) continue
+    o = (o == "") ? a[k] : o "-" a[k]
+  }
+  return (o == "") ? "track" : o
+}
+function addrefs(c, v) {
+  # the raw value (and its wrapped lines) is re-parsed whole each time, so a
+  # continuation line never starts a list of its own
+  braw[c] = (c in braw ? braw[c] " " : "") v
+  v = blockedrefs(braw[c]); refs[c] = ""
+  while (match(v, /[0-9]+/)) { refs[c] = refs[c] " " substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH) }
+}
+function addfile(p, c) {
+  if (!((p, c) in fseen)) { fseen[p, c] = 1; ftasks[p] = ftasks[p] " " c; if (!(p in fknown)) { fknown[p] = 1; forder[++fn] = p } }
+}
+fenceline($0) { next }
+/^## / { insec = ($0 ~ /^## Tracks[[:space:]]*$/) ? 1 : 0; cur = ""; next }
+$0 ~ rx {
+  id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+  cur = id; n++; order[n] = id; next
+}
+insec {
+  l = $0; sub(/\r$/, "", l)
+  if (l !~ /^[[:space:]]*[-*][[:space:]]+/) next
+  sub(/^[[:space:]]*[-*][[:space:]]+/, "", l); gsub(/\*/, "", l)
+  if (!match(l, /^[A-Za-z0-9]+/)) next
+  tid = substr(l, 1, RLENGTH); rest = substr(l, RLENGTH + 1)
+  if (rest !~ /^[[:space:]]+(—|–|-)[[:space:]]+/) next
+  sub(/^[[:space:]]+(—|–|-)[[:space:]]+/, "", rest)
+  if (rest !~ /Task/ && rest !~ /branch/) next
+  # name and member list sit before the middle dot, the branch after it
+  pre = rest; post = ""; di = index(rest, "·")
+  if (di > 0) { pre = substr(rest, 1, di - 1); post = substr(rest, di + length("·")) }
+  nm = pre; ci = index(nm, ":"); if (ci > 0) nm = substr(nm, 1, ci - 1)
+  if (ci > 0) { mem = substr(pre, ci + 1); while (match(mem, /[0-9]+/)) { listed[tid, substr(mem, RSTART, RLENGTH)] = 1; nlisted[tid]++; mem = substr(mem, RSTART + RLENGTH) } }
+  br = ""
+  if (match(post, /branch[[:space:]]+[^[:space:]]+/)) {
+    br = substr(post, RSTART, RLENGTH); sub(/^branch[[:space:]]+/, "", br); gsub(/`/, "", br); sub(/[,.;]+$/, "", br)
+  }
+  if (br == "") br = feature "/" tolower(tid) "-" tslug(nm)
+  tk[tid] = 1; tbr[tid] = br; ntk++
+  next
+}
+cur != "" {
+  if (fieldgate($0, "Track") && !(cur in trk)) { v = fieldval($0, "Track"); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v); trk[cur] = v; bcont = ""; next }
+  if (fieldgate($0, "Blocked by") && !(cur in bdone)) {
+    bdone[cur] = 1; v = fieldval($0, "Blocked by"); bcont = cur
+    addrefs(cur, v)
+    next
+  }
+  # A wrapped Blocked-by value (the template wraps it): continuation lines
+  # are unbulleted, like ticket.sh plan_task_rows reads them.
+  if (bcont == cur && trim($0) != "" && $0 !~ /^[-*][[:space:]]/ && $0 !~ /^[[:space:]]*[-*][[:space:]]/ && $0 !~ /^#/) { addrefs(cur, trim($0)); next }
+  if ($0 ~ /^[[:space:]]*[-*][[:space:]]/ || $0 ~ /^#/) bcont = ""
+  if (fieldgate($0, "Files") && !(cur in fdone)) {
+    fdone[cur] = 1
+    v = cleanfiles(fieldbody($0, "Files"), 1)
+    nfp = filepaths(v, fp)
+    for (i = 1; i <= nfp; i++) addfile(fp[i], cur)
+    next
+  }
+}
+END {
+  if (mode == "brief") {
+    if (ntk > 0 && (want in trk) && (trk[want] in tk)) print tbr[trk[want]]
+    exit 0
+  }
+  bad = 0
+  for (k = 1; k <= n; k++) {
+    t = order[k]
+    if (ntk > 0 && !(t in trk)) { print "E Task " t " has no Track — the plan has a ## Tracks section, every task names its track"; bad++ }
+    else if ((t in trk) && !(trk[t] in tk)) { print "E Task " t " names track " trk[t] " — not in ## Tracks"; bad++ }
+    else if (t in trk) {
+      if (!(trk[t] in first)) first[trk[t]] = t
+      if (nlisted[trk[t]] > 0 && !((trk[t], t) in listed)) { print "E Task " t " names track " trk[t] " but the ## Tracks line for " trk[t] " does not list it"; bad++ }
+    }
+  }
+  for (k = 1; k <= n; k++) {
+    t = order[k]; if (!((t in trk) && (trk[t] in tk))) continue
+    nr = split(refs[t], rs, " ")
+    for (j = 1; j <= nr; j++) {
+      r = rs[j]
+      if (!(r in trk) || !(trk[r] in tk) || trk[r] == trk[t] || first[trk[t]] == t) continue
+      print "E Task " t " (track " trk[t] ") is Blocked by Task " r " (track " trk[r] ") — only the first task of a track may wait on another track"; bad++
+    }
+  }
+  for (k = 1; k <= fn; k++) {
+    p = forder[k]; na = split(ftasks[p], ids, " ")
+    for (i = 1; i <= na; i++) for (j = i + 1; j <= na; j++) {
+      a = ids[i]; b = ids[j]
+      if ((a in trk) && (b in trk) && (trk[a] in tk) && (trk[b] in tk) && trk[a] != trk[b]) {
+        print "E `" p "` is edited by Task " a " (track " trk[a] ") and Task " b " (track " trk[b] ") — tasks that edit one file belong to one track"; bad++
+      }
+    }
+  }
+  if (ntk == 0 && !(seq + 0)) {
+    for (k = 1; k <= fn; k++) {
+      p = forder[k]; na = split(ftasks[p], ids, " ")
+      for (i = 1; i <= na; i++) for (j = i + 1; j <= na; j++) {
+        print "E non-Sequential layout with no ## Tracks, and Task " ids[i] " and Task " ids[j] " share " p " — add ## Tracks (write-plan step 2)"; bad++
+      }
+    }
+    for (k = 1; k <= n; k++) {
+      t = order[k]; nr = split(refs[t], rs, " "); delete rdone
+      for (j = 1; j <= nr; j++) {
+        r = rs[j]; if (r == t || (r in rdone)) continue
+        for (i = 1; i <= n; i++) if (order[i] == r) {
+          rdone[r] = 1
+          print "E non-Sequential layout with no ## Tracks, and Task " t " is Blocked by Task " r " — add ## Tracks (write-plan step 2)"; bad++
+          break
+        }
+      }
+    }
+  }
+  if (ntk > 0 && bad == 0) print "OK tracks: " ntk " tracks, every task assigned, no file shared across tracks"
+}
+'
+
+# One cell of the review set (C61) for a mode x tier — the only place the table
+# lives; --brief's Reviewers line and --review-set both print its return value.
+# sel = comma list of perf / ui / arch (Standard / Full R2 and R3 only).
+# shellcheck disable=SC2016
+RSET_AWK='
+function rsetcell(mode, tier, sel,   lens, spec, n, i, k, ids, out, sk) {
+  lens = "`rolepod-reviewer` `lens: spec` + `rolepod-reviewer` `lens: standards`"
+  sk = ENVIRON["RP_SKILLS_DIR"]
+  if (tier == "R1") return "`none`"
+  if (mode != "standard" && mode != "full") return lens
+  if (tier == "R4") {
+    if (mode == "standard") return "`rolepod-reviewer` `lens: security` (depth: checklist, model: strong, skill: `" sk "/security-review/SKILL.md`) + " lens
+    return "`rolepod-reviewer` `lens: security` (depth: full, model: strong, skill: `" sk "/security-review/SKILL.md`) + " lens " + the adversarial pass: with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `rolepod-reviewer` `lens: adversarial` (model: strong, skill: `" sk "/adversarial-review/SKILL.md`; internal, only if the external fails) — the external --detach first, then the rest in ONE message"
+  }
+  n = split("perf ui arch", ids, " ")
+  out = ""
+  for (i = 1; i <= n; i++) {
+    k = ids[i]
+    if (index("," sel ",", "," k ",")) out = (out == "" ? "" : out " + ") "`rolepod-reviewer` `lens: " k "`"
+  }
+  spec = "each matched specialist (`rolepod-reviewer` `lens: perf` · `lens: ui` · `lens: arch`, when its row matches)"
+  if (tier == "R2") return (out == "" ? lens : lens " + " out)
+  return lens " + " (out == "" ? spec : out)
+}
+'
+# The skills folder, resolved from where this script lives (repo core/skills,
+# a .worktrees checkout or the installed plugin copy); rsetcell prints paths under it.
+RP_SKILLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export RP_SKILLS_DIR
+
+# The task-tag grammar of a contract File-ownership label — one home, used by
+# --brief and by the L1 contract lint (prepended to each awk program).
+# shellcheck disable=SC2016
+TAGSPAN_AWK='
+# Extracts the task-tag span from a contract File-ownership label: a
+# `T<N>` or `Task(s) <N>` reference, optionally chained by one or more
+# range/list connectors (hyphen family, en/em dash, comma, slash,
+# ampersand, plus, "and", "then", "or") to further `T?<N>` references,
+# each repeat matched in turn so a 3-or-more-way list or a range plus a
+# trailing entry (`T1, T3, T5`, `T1-T2, T5`) names every number, not
+# just the first two — boundary-anchored so it never matches inside a
+# longer word. A bare number (no `T` prefix) is read as a COUNT, not a
+# further task number, and the chain stops before consuming it, only
+# when all three hold: it follows a dash-family connector (hyphen, en
+# dash or em dash); whitespace separates that connector from the number;
+# and whitespace plus a letter follows the number — `T2 — 3 hooks` / `T2
+# - 3 files`. A dash immediately adjacent to its number (`T1-4`) is
+# always a range, and every other connector (comma, slash, ampersand,
+# plus, "and", "then", "or") always chains regardless of trailing text
+# (`Tasks 1 and 2 only`, `T2, 3 files`) — a `T`-prefixed number always
+# counts as a task too, regardless of what follows (`T2 — T3 hooks`).
+# Returns "" when the label carries no task tag at all; otherwise the
+# span, prefixed M when it chains to a further number (several tasks
+# named) or 1 when it names exactly one.
+function tagspan(lbl,    hay, span, rest, m, follow, chained) {
+  hay = " " lbl
+  if (!match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/)) return ""
+  span = substr(hay, RSTART + 1, RLENGTH - 1)
+  rest = substr(hay, RSTART + RLENGTH)
+  chained = 0
+  while (match(rest, /^([[:space:]]*(-|–|—|,|\/|&|\+|and|then|or))+[[:space:]]*T?[0-9]+/)) {
+    m = substr(rest, RSTART, RLENGTH)
+    follow = substr(rest, RSTART + RLENGTH)
+    if (m !~ /T[0-9]+$/ && m ~ /(-|–|—)[[:space:]]+[0-9]+$/ && follow ~ /^[[:space:]]+[A-Za-z]/) break
+    span = span m
+    rest = follow
+    chained = 1
+  }
+  return (chained ? "M" : "1") span
+}
+function has_tasktag(lbl) { return tagspan(lbl) != "" }
+'
+
+# Workflow mode: env, then the session profile (native session id), then
+# workflow.mode from config, then lite. Readers sit beside this script when
+# installed, else under the repo's hooks/lib. Sets BRIEF_WMODE, BRIEF_WSRC and
+# BRIEF_READER; reads BRIEF_ROOT. Shared by --brief and --review-set.
+rp_resolve_wmode() {
+  BRIEF_WMODE="${ROLEPOD_SESSION_MODE:-}"
+  BRIEF_WSRC="${ROLEPOD_SESSION_SOURCE:-}"
+  if [[ ! "$BRIEF_WMODE" =~ ^(lite|standard|full)$ ]]; then
+    BRIEF_WMODE=""; BRIEF_WSRC=""
+    BRIEF_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    BRIEF_LIB="$BRIEF_HERE"
+    [ -f "$BRIEF_LIB/session-mode.sh" ] || BRIEF_LIB="$BRIEF_HERE/../../../../hooks/lib"
+    BRIEF_CLI="${ROLEPOD_SESSION_CLI:-}"
+    . "$BRIEF_LIB/session-mode.sh" 2>/dev/null || true
+    if [ -z "$BRIEF_CLI" ] && type rolepod_session_native_profile >/dev/null 2>&1 && rolepod_session_native_profile; then
+      BRIEF_CLI="$ROLEPOD_SESSION_CLI"
+    fi
+    if [ -n "$BRIEF_CLI" ] && type rolepod_session_profile_load >/dev/null 2>&1; then
+      rolepod_session_profile_load "${ROLEPOD_HOOK_INPUT:-}" "$BRIEF_CLI"
+      BRIEF_WMODE="$ROLEPOD_SESSION_MODE"; BRIEF_WSRC="$ROLEPOD_SESSION_SOURCE"
+    fi
+  fi
+  # Config reader, resolved once: beside this script when installed, else under the repo's hooks/lib.
+  BRIEF_READER="${BRIEF_HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/rolepod_config.py"
+  [ -f "$BRIEF_READER" ] || BRIEF_READER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../../hooks/lib/rolepod_config.py"
+  if [[ ! "$BRIEF_WMODE" =~ ^(lite|standard|full)$ ]]; then
+    BRIEF_CFG="$(ROLEPOD_PROJECT_ROOT="${ROLEPOD_PROJECT_ROOT:-$BRIEF_ROOT}" python3 -I "$BRIEF_READER" mode 2>/dev/null || true)"
+    BRIEF_WMODE="$(printf '%s\n' "$BRIEF_CFG" | awk -F= '$1 == "mode" {print $2}')"
+    BRIEF_WSRC="$(printf '%s\n' "$BRIEF_CFG" | awk -F= '$1 == "source" {print $2}')"
+  fi
+  case "$BRIEF_WMODE" in lite|standard|full) ;; *) BRIEF_WMODE=lite; BRIEF_WSRC=uncaptured ;; esac
+  case "$BRIEF_WSRC" in project|global|default|uncaptured) ;; *) BRIEF_WSRC=uncaptured ;; esac
+}
+
+if [ "${1:-}" = "--review-set" ]; then
+  shift
+  RS_USAGE="usage: plan-lint.sh --review-set --tier <R1|R2|R3|R4> [--mode <lite|standard|full>] [--match <perf,ui,arch>]"
+  RS_TIER=""; RS_MODE=""; RS_MODE_GIVEN=0; RS_MATCH=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --tier)  [ $# -ge 2 ] || { echo "$RS_USAGE" >&2; exit 2; }; RS_TIER="$2"; shift 2 ;;
+      --mode)  [ $# -ge 2 ] || { echo "$RS_USAGE" >&2; exit 2; }; RS_MODE="$2"; RS_MODE_GIVEN=1; shift 2 ;;
+      --match) [ $# -ge 2 ] && [ -n "$2" ] || { echo "$RS_USAGE" >&2; exit 2; }; RS_MATCH="$2"; shift 2 ;;
+      *) echo "$RS_USAGE" >&2; exit 2 ;;
+    esac
+  done
+  case "$RS_TIER" in R1|R2|R3|R4) ;; *) echo "$RS_USAGE" >&2; exit 2 ;; esac
+  if [ -n "$RS_MATCH" ]; then
+    case ",$RS_MATCH," in *,,*) echo "$RS_USAGE" >&2; exit 2 ;; esac
+    IFS=, read -r -a RS_TOKS <<< "$RS_MATCH"
+    for t in "${RS_TOKS[@]}"; do
+      case "$t" in perf|ui|arch) ;; *) echo "$RS_USAGE" >&2; exit 2 ;; esac
+    done
+  fi
+  if [[ ! "$RS_MODE" =~ ^(lite|standard|full)$ ]]; then
+    if [ "$RS_MODE_GIVEN" = 1 ]; then RS_MODE=lite
+    else
+      BRIEF_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+      rp_resolve_wmode; RS_MODE="$BRIEF_WMODE"
+    fi
+  fi
+  awk -v mode="$RS_MODE" -v tier="$RS_TIER" -v sel="$RS_MATCH" "$RSET_AWK"'BEGIN { print "Review: " rsetcell(mode, tier, sel) }'
+  exit $?
+fi
+
+if [ "${1:-}" = "--brief" ]; then
+  shift
+  # `--main` may appear in any position after --brief (a task that runs on
+  # the main checkout — a sequential track, no worktree); pull it out first
+  # so the remaining args keep their usual <N> <plan.md> [contract.md] order.
+  BRIEF_MAIN=0
+  BRIEF_PLANWT=0
+  BRIEF_POS=()
+  for a in "$@"; do
+    if [ "$a" = "--main" ]; then BRIEF_MAIN=1
+    elif [ "$a" = "--plan-worktree" ]; then BRIEF_PLANWT=1
+    else BRIEF_POS+=("$a"); fi
+  done
+  BRIEF_N="${BRIEF_POS[0]:-}"
+  PLAN="${BRIEF_POS[1]:-}"
+  CONTRACT="${BRIEF_POS[2]:-}"
+  if [ -z "$BRIEF_N" ] || [ -z "$PLAN" ] || [ ! -f "$PLAN" ]; then
+    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] [--main] [--plan-worktree]" >&2
+    exit 2
+  fi
+  if [ -n "$CONTRACT" ] && [ ! -f "$CONTRACT" ]; then
+    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] [--main] [--plan-worktree] — contract not found: $CONTRACT" >&2
+    exit 2
+  fi
+  # shellcheck disable=SC2016
+  BRIEF_AWK='
+  # Paths come through ENVIRON: awk -v would process a backslash as an escape.
+  BEGIN { planpath = ENVIRON["RP_BRIEF_PLAN"]; repo = ENVIRON["RP_BRIEF_REPO"]; baseroot = ENVIRON["RP_BRIEF_BASE"] }
+  function slug(x,   t, n, a, k, o, w) {
+    t = tolower(x); gsub(/[^a-z0-9]+/, "-", t); gsub(/^-+|-+$/, "", t)
+    n = split(t, a, "-"); o = ""
+    for (k = 1; k <= n && split(o, w, "-") < 3; k++) {
+      if (a[k] == "" || a[k] ~ /^(the|a|an|of|to|in|for|and|on|is|with)$/) continue
+      o = (o == "") ? a[k] : o "-" a[k]
+    }
+    return (o == "") ? "task" : o
+  }
+  function addallowed(p) {
+    if (p == "") return
+    if (!(p in allowedset)) { allowedset[p] = 1; allowedord[++acnt] = p }
+  }
+  # The Handoff section of a blocked-by task receipt, whole lines up to cap chars; "" when the
+  # receipt or its section is missing or empty. Own fence flag: fenceline() state belongs to the plan pass.
+  function handoff_of(rfile, cap,    line, on, fence, out, cut) {
+    out = ""; on = 0; fence = 0; cut = 0
+    while ((getline line < rfile) > 0) {
+      if (line ~ /^ *(```|~~~)/) fence = !fence
+      if (!fence && line ~ /^## /) { if (on) break; if (line ~ /^## Handoff/) on = 1; continue }
+      if (!on || line ~ /^[ \t]*$/ || line ~ /^<.*>$/) continue
+      if (length(line) + 1 > cap - length(out)) { if (out == "") out = substr(line, 1, cap) "\n"; cut = 1; break }
+      out = out line "\n"
+    }
+    close(rfile)
+    if (out != "" && cut) out = out "(cut - the rest is in the receipt)\n"
+    return out
+  }
+  # cleanfiles() is shared with the plain lint path — defined once in
+  # CLEANFILES_AWK, prepended to this program at invocation.
+  # tagspan() / has_tasktag() are shared with the L1 contract lint — defined
+  # once in TAGSPAN_AWK, prepended to this program at invocation.
+  # A label that chains to a further task number (a range like `Tasks
+  # 1-4` / `T1-4` / `T1-T4`, or a list like `Tasks 1, 3` / `T1/T2` /
+  # `T1, then T2`) is a tag for EACH task it names, never a scoped slice
+  # for one — the owning task already lists its own paths under Files,
+  # so such a label contributes no files to any task Files allowed (a
+  # label naming only one task, or a bare role name with no task tag at
+  # all, is unaffected).
+  function is_multitask(lbl) { return substr(tagspan(lbl), 1, 1) == "M" }
+  # Does the label task-tag span name task `want` — a plain number match,
+  # or membership in a hyphen-family range (`Tasks 1-4`, `T1-T4`, an en
+  # dash) versus a discrete list otherwise (comma, slash, ampersand,
+  # plus, "and", "then", "or" all list rather than range).
+  function label_names_task(lbl, want,    span, s, num, pre, prevnum, lo, hi, j) {
+    span = tagspan(lbl)
+    if (span == "") return 0
+    s = substr(span, 2)
+    prevnum = ""
+    while (match(s, /[0-9]+/)) {
+      num = substr(s, RSTART, RLENGTH) + 0
+      pre = substr(s, 1, RSTART - 1)
+      if (prevnum != "" && pre ~ /-|–|—/) {
+        lo = prevnum; hi = num
+        if (lo > hi) { j = lo; lo = hi; hi = j }
+        for (j = lo; j <= hi; j++) if (j == want) return 1
+      } else if (num == want) return 1
+      prevnum = num
+      s = substr(s, RSTART + RLENGTH)
+    }
+    return 0
+  }
+  # A "## High-risk surfaces touched" line may name several tasks in one
+  # go ("auth -> Task 2 and billing -> Task 4", "-> Task 1, Task 2") — walk
+  # every task-tag occurrence on the line rather than trusting one
+  # tagspan/label_names_task call to see them all: tagspans own chaining
+  # only recognizes an abbreviated `T2` right after a connector, never the
+  # full word (`, Task 2`), so a single call over the whole line would stop
+  # at the first tag. RSTART/RLENGTH are saved before calling
+  # label_names_task — it runs tagspan, which calls match() again and would
+  # otherwise clobber them. label_names_task still does the range/list math
+  # (`Tasks 1-3`, `T1, T3`) on whatever tag it is handed. A line with no
+  # task tag at all (a plain path, or "None - ...") never counts.
+  function line_names_task(line, want,    hay, rstart, rlen) {
+    hay = " " line
+    while (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/)) {
+      rstart = RSTART; rlen = RLENGTH
+      if (label_names_task(substr(hay, rstart), want)) return 1
+      hay = substr(hay, rstart + rlen)
+    }
+    return 0
+  }
+  function rxesc(s,    out, i, c) {
+    out = ""
+    for (i = 1; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (index("\\^$.[]|()*+?{}", c) > 0) out = out "\\" c
+      else out = out c
+    }
+    return out
+  }
+  # Position of the first UNMATCHED `)` in s (1-based), or length(s)+1 when
+  # every `)` has an opening `(` earlier in s — used to end a do-not-touch
+  # exception clause at a stray close-paren left over from an enclosing
+  # note the clause is embedded in ("`make render`), `hooks/...`" — the
+  # `)` after "make render" closes the OUTER note, not anything opened
+  # inside this token, so it ends the clause instead of printing "make
+  # render )". A genuinely balanced `(...)` inside the clause itself is
+  # never mistaken for this — depth only goes negative on a real orphan.
+  function firstunmatched(s,    i, c, depth) {
+    depth = 0
+    for (i = 1; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (c == "(") depth++
+      else if (c == ")") { if (depth == 0) return i; depth-- }
+    }
+    return length(s) + 1
+  }
+  # Case-sensitive, exactly like the gates own PROSE_N/NONPROSE_N test
+  # (hooks/precommit-gate.sh): auth/README.MD is NOT prose -- only a
+  # literal lowercase extension or an extension-less, literal-uppercase
+  # README/LICENSE/CHANGELOG basename counts (security review 2026-09-24,
+  # plan-lint under-tiering a case-varied path the gate itself treats as
+  # code). Lowercasing stays ONLY in is_securitys risk-term word split.
+  function is_prose(p) {
+    if (p ~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/) return 1
+    if (p ~ /(^|\/)(README|LICENSE|CHANGELOG)$/) return 1
+    return 0
+  }
+  function is_security(p,    lp, n, w, i) {
+    lp = tolower(p)
+    gsub(/[^a-z0-9]/, " ", lp)
+    n = split(lp, w, " ")
+    for (i = 1; i <= n; i++)
+      if (w[i] ~ /^(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)$/) return 1
+    return 0
+  }
+  # A test file is named as a companion of the source it tests (Pythons
+  # test_x.py, JS/TS x.test.ts / x.spec.ts, Go/Rust/Ruby/Elixir x_test.*) —
+  # never a bare directory segment. A dir-based match would count a whole
+  # integration/e2e suite (many concerns, one shared file) as "its own
+  # test", masking a real multi-file change as R2.
+  function is_test(p,    lp) {
+    lp = tolower(p)
+    if (lp ~ /\.(test|spec)\.[a-z0-9]+$/) return 1
+    if (lp ~ /(^|\/)test_[^\/]+\.py$/) return 1
+    if (lp ~ /(^|\/)conftest\.py$/) return 1
+    if (lp ~ /_(test|spec)\.(go|rs|rb|ex|exs)$/) return 1
+    return 0
+  }
+  # Add the paths of one Files-field text to the forbidden pool.
+  function addtouch(s,    n, ps, i, p) {
+    n = split(taskpaths(s), ps, "\n")
+    for (i = 1; i <= n; i++) {
+      p = ps[i]
+      if (p != "" && !(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
+    }
+  }
+  # A field is only a line whose trimmed, asterisk-stripped start is a
+  # bullet (dash OR asterisk — the same bullet grammar the Blocked-by /
+  # Files / Owner graph scan below accepts), an optional checkbox
+  # ([ ] / [x]), then the label -- never a prose sentence elsewhere on the
+  # line that quotes the label (a Blocked by or Owner mention inside
+  # Test / evidence prose must not be read as that field).
+  function fieldline(line, name,    g) {
+    g = line; sub(/^[[:space:]]+/, "", g)
+    if (g !~ /^[-*]/) return 0
+    g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
+    return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
+  }
+  # The one field-append ladder — every site that extends the CURRENT
+  # field (a fenced line copied in whole, or an unfenced continuation line)
+  # calls this instead of repeating the if/else chain.
+  function appendfield(f, cont) {
+    if (f == "D") D = (D == "" ? cont : D "\n" cont)
+    else if (f == "B") B = (B == "" ? cont : B "\n" cont)
+    else if (f == "R") R = (R == "" ? cont : R "\n" cont)
+    else if (f == "F") Fr = (Fr == "" ? cont : Fr "\n" cont)
+    else if (f == "C") Ch = (Ch == "" ? cont : Ch "\n" cont)
+    else if (f == "T") Te = (Te == "" ? cont : Te "\n" cont)
+    else if (f == "Cmd") Cmd = (Cmd == "" ? cont : Cmd "\n" cont)
+    else if (f == "Ck") Ck = (Ck == "" ? cont : Ck "\n" cont)
+    else if (f == "O") Ow = (Ow == "" ? cont : Ow "\n" cont)
+    else if (f == "DW") DW = (DW == "" ? cont : DW "\n" cont)
+    else if (f == "P") Pr = (Pr == "" ? cont : Pr "\n" cont)
+    else if (f == "Ef") Ef = (Ef == "" ? cont : Ef "\n" cont)
+    else if (f == "Of") Of = (Of == "" ? cont : Of "\n" cont)
+  }
+  FNR == NR {
+    # Fence rule first, ahead of every other match on this line — a fenced
+    # line never becomes a task heading, a `## ` heading, a field line or a
+    # checkbox. It joins the parsed value of the open field only when the
+    # field is prose (Delivers, Read first, Change, Test / evidence, Expected
+    # failing signal, Done when, On fail) — a fence pasted into a checked
+    # field would otherwise smuggle text into Files allowed, Command, Proof
+    # or a role string. Every other case (no field yet, Files, Owner,
+    # Proof, Check, Command, Blocked by) lands in `plantext`, ONE per-task
+    # buffer that is never fed to a parsed field and is printed verbatim,
+    # untouched, as its own `## Plan text` section — so it is still visible
+    # in the brief no matter where in the task it sits, including right
+    # after the last real field of the task.
+    if (fenceline($0)) {
+      if (intask) {
+        if (field == "D" || field == "R" || field == "C" || field == "T" || field == "Ef" || field == "DW" || field == "Of") {
+          appendfield(field, $0)
+        } else {
+          plantext = (plantext == "" ? $0 : plantext "\n" $0)
+        }
+      }
+      next
+    }
+    if ($0 ~ /^## /) {
+      intask = 0; field = ""
+      specsec = ($0 ~ /^## Source spec/) ? 1 : 0
+      hrsec = (tolower($0) ~ /^## high-risk surfaces touched/) ? 1 : 0
+      anytask = 0; allf = 0
+      next
+    }
+    # A task heading also closes Source spec — some real plans go straight
+    # from it into "### Task 1" with no "## Tasks" line between.
+    if ($0 ~ rx) {
+      specsec = 0; hrsec = 0; anytask = 1; allf = 0
+      id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+      if (id == want) {
+        intask = 1; found = 1
+        hline = $0
+        title = $0
+        sub(/^### (Task ?|T)[0-9]+/, "", title)
+        # strip only ASCII separators and the dashes: a UTF-8 (Thai) title is not alnum to awk and must stay
+        sub(/^([[:space:][:punct:]]|—|–)+/, "", title)
+      } else intask = 0
+      field = ""
+      next
+    }
+    if (h1 == "" && $0 ~ /^# /) { h1 = $0; sub(/^# +/, "", h1) }
+    if (specsec) { if (spec == "" && trim($0) != "") spec = trim($0); next }
+    if (hrsec) { if (trim($0) != "") hrline[++hrn] = $0; next }
+    # The forbidden pool is the union of every task Files field (this task
+    # included; its own paths are dropped against Files allowed at print time).
+    if (anytask) {
+      if (fieldline($0, "Files")) { allf = 1; addtouch(fieldbody($0, "Files")); if (tpaside) allf = 0 }
+      else if (trim($0) == "" || $0 ~ /^[-*][[:space:]]/) allf = 0
+      else if (allf) { addtouch(trim($0)); if (tpaside) allf = 0 }
+    }
+    if (intask) {
+      line = $0
+      isf = 1
+      # Field labels match with or without **bold** — real plans write both
+      # dialects (core/skills/write-plan/examples/plan-examples.md "Good"
+      # scenario 1 is unbolded end to end). fieldline() requires the label
+      # to START the (trimmed, unbolded) line, as a bullet — a prose
+      # sentence that merely quotes the label text is never the field.
+      if (fieldline(line, "Delivers"))             { field = "D";   v = fieldbody(line, "Delivers") }
+      else if (fieldline(line, "Blocked by"))      { field = "B";   v = fieldbody(line, "Blocked by") }
+      else if (fieldline(line, "Read first"))      { field = "R";   v = fieldbody(line, "Read first") }
+      else if (fieldline(line, "Files"))           { field = "F";   v = fieldbody(line, "Files") }
+      else if (fieldline(line, "Change"))          { field = "C";   v = fieldbody(line, "Change") }
+      else if (fieldline(line, "Test / evidence")) { field = "T";   v = fieldbody(line, "Test / evidence") }
+      else if (fieldline(line, "Command"))         { field = "Cmd"; v = fieldbody(line, "Command") }
+      # Superseded (spec lean-loop-2026-09-23 Task 2: ONE test field, the
+      # Command, run once, last before returning) — parsed
+      # only so a Check: line in an older plan ends whatever field came
+      # before it instead of gluing onto it; the value is captured and
+      # ignored, never printed into a new brief.
+      else if (fieldline(line, "Check"))           { field = "Ck";  v = fieldbody(line, "Check") }
+      else if (fieldline(line, "Owner"))           { field = "O";   v = fieldbody(line, "Owner") }
+      else if (fieldline(line, "Done when"))       { field = "DW";  v = fieldbody(line, "Done when") }
+      # Optional — the one claim + command a reviewer would check by hand
+      # (spec R3). A bullet of its own right after Test / evidence, never
+      # indented under it (an indented line is a continuation, handled below).
+      else if (fieldline(line, "Proof"))           { field = "P";   v = fieldbody(line, "Proof") }
+      # Optional — printed only when the task carries them, right after
+      # Test / evidence and Done when respectively (never their own heading
+      # when the task has neither field).
+      else if (fieldline(line, "Expected failing signal")) { field = "Ef"; v = fieldbody(line, "Expected failing signal") }
+      else if (fieldline(line, "On fail"))                 { field = "Of"; v = fieldbody(line, "On fail") }
+      else isf = 0
+      if (isf && field != "") {
+        # Only the LEADING run of bold asterisks (the closing ** of a bold
+        # label, e.g. "**Command:**") is stripped — a bare gsub also ate a
+        # literal * inside the value itself, corrupting Command/Files text
+        # like `pytest -k "test_brief*"` or `src/**/*.ts`.
+        sub(/^\*+[[:space:]]*/, "", v); v = trim(v)
+        if (field == "D") D = v
+        else if (field == "B") B = v
+        else if (field == "R") R = v
+        else if (field == "F") { Fr = v; sawfiles = 1 }
+        else if (field == "C") Ch = v
+        else if (field == "T") Te = v
+        else if (field == "Cmd") Cmd = v
+        else if (field == "Ck") Ck = v
+        else if (field == "O") Ow = v
+        else if (field == "DW") DW = v
+        else if (field == "P") Pr = v
+        else if (field == "Ef") Ef = v
+        else if (field == "Of") Of = v
+      }
+      # A continuation line extends the CURRENT field only when it is not
+      # itself a new bullet — otherwise an unrecognized bullet (a field this
+      # script does not track, or a typo) silently glues onto the last known
+      # field instead of being dropped.
+      # An INDENTED bullet is a sub-item of the current field (the template
+      # Change block holds one indented `- [ ]` line per step); only an unindented one is new.
+      if (!isf && field != "" && trim(line) != "" && line !~ /^[-*][[:space:]]/) {
+        appendfield(field, trim(line))
+      }
+      next
+    }
+    next
+  }
+  FNR != NR {
+    # Fence rule first here too — a fenced `## File ownership` or
+    # `## Do-not-touch list` heading (or the owner/exception lines inside
+    # it) never opens or feeds those sections, same as the standalone
+    # ownership pass below in the plain-lint path.
+    if (fenceline($0)) { next }
+    if ($0 ~ /^## /) {
+      ownsec = ($0 ~ /^## File ownership/) ? 1 : 0
+      dnsec = ($0 ~ /^## Do-not-touch list/) ? 1 : 0
+      sisec = ($0 ~ /^## Shared interfaces/) ? 1 : 0
+      sicont = 0; cid = ""
+      next
+    }
+    # Shared interfaces: a label line opening with an id C<n> starts an entry
+    # (a new label or a heading closes it). Any later `> ` line is kept
+    # verbatim; an indented line is kept only right after the label, a `>`
+    # line or a kept indented line (a top-level plain line only stops that
+    # run). A bare `>` is not kept.
+    if (sisec) {
+      cl = $0; sub(/\r$/, "", cl)
+      if (match(cl, /^C[0-9]+([^A-Za-z0-9]|$)/)) {
+        cid = substr(cl, 1, RLENGTH); sub(/[^0-9]+$/, "", cid)
+        if (!(cid in sitext)) sids[++nsi] = cid
+        sitext[cid] = ""
+        sicont = 1
+      } else if (cid != "" && cl ~ /^> /) { sitext[cid] = (sitext[cid] == "" ? cl : sitext[cid] "\n" cl); sicont = 1 }
+      else if (cid != "" && cl ~ /^>/) sicont = 1
+      else if (cid != "" && sicont && cl ~ /^[ \t]+[^ \t]/) sitext[cid] = (sitext[cid] == "" ? cl : sitext[cid] "\n" cl)
+      else if (cl !~ /^[ \t]*$/) sicont = 0
+      next
+    }
+    if (ownsec) {
+      if (match($0, /`[^`]+`/)) {
+        label = substr($0, RSTART + 1, RLENGTH - 2)
+        rest = substr($0, RSTART + RLENGTH)
+        # A task tag may sit between the backticked role and the colon that
+        # ends the label (`` `rolepod-builder` (Task 1): `path` ``) instead of
+        # inside the backticks (`` `rolepod-builder (Task 1)`: `path` ``) — fold
+        # it into label so tagspan()/has_tasktag() see it exactly the same
+        # way (adversarial-review-split follow-up). Only a genuine task tag
+        # qualifies — a plain parenthetical aside naming another role
+        # (`` `rolepod-builder` (pairs with rolepod-qa): `x` ``)
+        # must never widen the role-fallback match at :664, so has_tasktag()
+        # gates the append; a colon-free span, or one that itself carries a
+        # backtick (a second owner label on the same line), is left alone.
+        ci = index(rest, ":")
+        if (ci > 0) {
+          pretag = substr(rest, 1, ci - 1)
+          if (pretag !~ /`/ && has_tasktag(pretag)) label = label pretag
+        }
+        onum++
+        ownlabel[onum] = label
+        cnt = 0
+        m = rest
+        while (match(m, /`[^`]+`/)) {
+          cnt++
+          ownpath[onum, cnt] = substr(m, RSTART + 1, RLENGTH - 2)
+          m = substr(m, RSTART + RLENGTH)
+        }
+        owncount[onum] = cnt
+      }
+      next
+    }
+    if (dnsec) {
+      m = $0
+      # An entry may carry a trailing exception clause before the next
+      # comma, semicolon, sentence-ending period, or unmatched `)` ("core/
+      # skills/star-star except Task 4 four files") — kept verbatim
+      # alongside the glob in Files forbidden, so the printed line never
+      # contradicts a task whose Files allowed already lists the
+      # exception paths (always-on-core-lean follow-up: the bare glob
+      # alone read as a flat contradiction). Real do-not-touch lines also
+      # carry plain parenthetical asides with their OWN backticked
+      # mentions ("`plugins/**` and every rendered adapter output (an
+      # owner never runs `make render`), ...") — a backtick reached
+      # before any of those delimiters means this is one of those, not a
+      # clean "except ..." clause, so the entry prints bare rather than a
+      # fragment truncated mid-sentence. A period only ends the clause
+      # when it is itself sentence-ending (followed by whitespace or end
+      # of line) — "except SKILL.md" or "(v2.1)" must survive whole; a
+      # `)` only ends it when unmatched — the `)` closing `(an owner
+      # never runs `make render`)` belongs to the ENCLOSING note, not to
+      # the "make render" token itself, so it ends that token clause
+      # instead of printing "make render )".
+      while (match(m, /`[^`]+`/)) {
+        # RSTART/RLENGTH are saved immediately — the match() call below
+        # (for the sentence-ending period) overwrites them, and they are
+        # still needed after to advance m past THIS backtick span.
+        mstart = RSTART; mlen = RLENGTH
+        p = substr(m, mstart + 1, mlen - 2)
+        rest = substr(m, mstart + mlen)
+        ci = index(rest, ","); if (ci == 0) ci = length(rest) + 1
+        bi = index(rest, "`"); if (bi == 0) bi = length(rest) + 1
+        di = match(rest, /\.([[:space:]]|$)/) ? RSTART : length(rest) + 1
+        si = index(rest, ";"); if (si == 0) si = length(rest) + 1
+        pu = firstunmatched(rest)
+        cut = ci; if (di < cut) cut = di; if (si < cut) cut = si; if (pu < cut) cut = pu
+        if (bi < cut) exc = ""
+        else {
+          exc = substr(rest, 1, cut - 1)
+          gsub(/^[[:space:]]+/, "", exc)
+          gsub(/[[:space:]]+$/, "", exc)
+        }
+        # Only an "except ..." clause rides along; any other trailing text is
+        # prose ("(a migration need stops the task", "first") and never
+        # part of the path. A backticked label such as `NEEDS:` is no path.
+        if (exc !~ /^[(]?[Ee]xcept[[:space:]]/) exc = ""
+        m = substr(m, mstart + mlen)
+        if (p ~ /:$/) continue
+        disp = (exc == "") ? p : p " " exc
+        if (!(p in dntset)) { dntset[p] = 1; dntord[++dn] = p; dntdisp[p] = disp }
+      }
+      # No backtick on the line: the first path-shaped token only, read by
+      # the shared filepaths() and then held to a stricter shape — a trailing
+      # slash, or a dot + a 2+ char extension opening with a letter — so
+      # prose ("e.g", "v2.1", "read/write") never becomes a path. A line
+      # with none prints nothing.
+      if ($0 !~ /`/) {
+        bl = $0; gsub(/[(]/, " ", bl); gsub(/[.:]([[:space:]]|$)/, " ", bl)
+        delete bp
+        nbp = filepaths(bl, bp)
+        for (ti = 1; ti <= nbp; ti++) {
+          tk = bp[ti]
+          if (tk ~ /^https?:/ || !(tk ~ /\/$/ || tk ~ /\.[A-Za-z][A-Za-z0-9]+$/)) continue
+          if (!(tk in dntset)) { dntset[tk] = 1; dntord[++dn] = tk; dntdisp[tk] = tk }
+          break
+        }
+      }
+      next
+    }
+    next
+  }
+  END {
+    if (!found) {
+      print "plan-lint --brief: Task " want " not found in " planpath > "/dev/stderr"
+      exit 2
+    }
+    if (!sawfiles) {
+      sub(/^### /, "", hline); sub(/\r$/, "", hline)
+      print "plan-lint --brief: missing Files: " hline " — a Files-less task has no Files allowed for its owner" > "/dev/stderr"
+      exit 2
+    }
+    role = Ow
+    sub(/\n.*/, "", role)
+    sub(/[[:space:]]*\(.*/, "", role)
+    sub(/[[:space:]]*·.*/, "", role)
+    role = trim(role)
+    cleaned = cleanfiles(Fr, 1)
+    m = cleaned
+    while (match(m, /`[^`]+`/)) {
+      p = substr(m, RSTART + 1, RLENGTH - 2)
+      addallowed(p)
+      m = substr(m, RSTART + RLENGTH)
+    }
+    restv = cleaned
+    gsub(/`[^`]+`/, " ", restv)
+    ntok = split(restv, toks, /[,[:space:]]+/)
+    for (ti = 1; ti <= ntok; ti++) {
+      tok = toks[ti]
+      gsub(/[,;)]+$/, "", tok)
+      if (tok == "" || tok ~ /^</) continue
+      if (tok ~ /^([Aa]nd|[Oo]r)$/) continue
+      if (tok ~ /\// || tok ~ /\.[[:alnum:]]+$/) addallowed(tok)
+    }
+    if (hascontract) {
+      # Pass 1: a task tag on a label names THIS task unambiguously — a
+      # single tag (`T2`, `Task 2`) or a multi-task tag that lists or
+      # ranges over it (`Tasks 1-4`, `T1, T3`). When any label carries
+      # one, that is the whole answer and the (weaker) role-name match
+      # is not consulted at all — otherwise two labels for the same
+      # role but different tasks, e.g. `rolepod-builder (T1)` and
+      # `rolepod-builder (T4)`, would both match Task 1 by role name
+      # and leak the T4 files into the T1 brief.
+      tagfound = 0
+      for (k = 1; k <= onum; k++) {
+        named[k] = label_names_task(ownlabel[k], want)
+        if (named[k]) tagfound = 1
+      }
+      for (k = 1; k <= onum; k++) {
+        ml = 0
+        if (tagfound) {
+          # A multi-task label tags every task it names, but stays a tag
+          # only — its files never widen any task Files allowed; the
+          # owning task already lists its own paths under Files.
+          ml = named[k] && !is_multitask(ownlabel[k])
+        } else if (role != "" && !has_tasktag(ownlabel[k])) {
+          # Role match is boundary-anchored — a plain substring let
+          # "rolepod-builder" match a label naming a DIFFERENT task.
+          # The boundary excludes hyphen (part of a kebab-case role
+          # token). A label carrying ANY task tag (single or multi) is
+          # reserved for the task(s) it names and never falls back to a
+          # same-role match for a task it does not name.
+          rolepat = "(^|[^A-Za-z0-9-])" rxesc(role) "([^A-Za-z0-9-]|$)"
+          if (ownlabel[k] ~ rolepat) ml = 1
+        }
+        if (ml) for (pi = 1; pi <= owncount[k]; pi++) addallowed(ownpath[k, pi])
+      }
+    }
+    printf "# Task %s: %s\n", want, trim(title)
+    specout = (spec == "") ? "(not in plan)" : spec
+    printf "Plan: %s · Spec: %s\n", planpath, specout
+    feat = h1; sub(/[[:space:]]+[Pp]lan[[:space:]]*$/, "", feat); feat = slug(feat)
+    tslug = slug(title)
+    if (onmain) {
+      print "## Checkout"
+      print "main checkout — no worktree; run every command in the main checkout"
+    } else if (tbranch != "") {
+      # A task in a track (## Tracks): the track branch and worktree, shared
+      # by every task of the track — path = the branch with / turned into -.
+      tpath = tbranch; gsub(/\//, "-", tpath)
+if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
+      print "## Worktree"
+      printf "`git worktree add -b %s ../%s-wt-%s` — cd there for every command; the name says which track it holds\n", tbranch, repo, tpath
+    } else {
+      print "## Worktree"
+      printf "`git worktree add -b %s/t%s-%s ../%s-wt-%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, repo, feat, want, tslug
+    }
+    print "## Goal"
+    print (D == "" ? "(not in plan)" : D)
+    print "## Tier"
+    # Computed ONCE here and reused by ## Reviewers below — Reviewers
+    # follows the tier (spec R2), it never re-derives it from the raw
+    # helpers, so the two can never print a mismatched pair on a reorder.
+    tprose = 1
+    for (i = 1; i <= acnt; i++) if (!is_prose(allowedord[i])) tprose = 0
+    # The repo risk-paths override (same file the commit gate reads): a bare / +
+    # line adds a path pattern, a - line excludes one. Case-insensitive, like the gate.
+    radd = tolower(ENVIRON["RP_RISK_ADD"]); rexcl = tolower(ENVIRON["RP_RISK_EXCL"])
+    trisk = 0
+    for (i = 1; i <= acnt; i++) {
+      # A prose path never counts as a risk hit — neither via is_security
+      # nor via a .rolepod/risk-paths add pattern — mirroring the HIGH_RISK=
+      # prose filter in hooks/precommit-gate.sh, which drops docs before its
+      # own risk filter (adversarial-review-split follow-up).
+      if (is_prose(allowedord[i])) continue
+      lp = tolower(allowedord[i])
+      hit = is_security(allowedord[i])
+      if (radd != "" && lp ~ radd) hit = 1
+      if (hit && rexcl != "" && lp ~ rexcl) hit = 0
+      if (hit) trisk = 1
+    }
+    # A "## High-risk surfaces touched" line naming this task counts as a
+    # risk hit exactly like a risk-path file above — same precedence, so a
+    # prose-only task (tprose, checked first below) still stays R1, and a
+    # line with no task tag changes nothing (a line reading "None - Task 3
+    # only reads" still tiers Task 3 — the tag is what matters, not the word).
+    riskpath = trisk; hrnamed = 0
+    for (i = 1; i <= hrn; i++) if (line_names_task(hrline[i], want)) { trisk = 1; hrnamed = 1 }
+    # Plain lint check 3c reads the tier through this same computation (RP_TIER3C):
+    # one line, `3C R4 named` or `3C R4 unnamed` (R4 by a risk path, no line names it).
+    tnontest = 0
+    for (i = 1; i <= acnt; i++) if (!is_test(allowedord[i])) tnontest++
+    if (acnt > 0 && tprose) tier = "R1"
+    else if (trisk) tier = "R4"
+    else if (tnontest == 1 && (acnt - tnontest) <= 1) tier = "R2"
+    else tier = "R3"
+    if (ENVIRON["RP_TIER3C"] != "") {
+      if (tier == "R4") print "3C R4 " ((riskpath && !hrnamed) ? "unnamed" : "named")
+      exit 0
+    }
+    tiergloss["R1"] = "R1 (docs-only)"; tiergloss["R2"] = "R2 (one file + test)"
+    tiergloss["R3"] = "R3 (multi-file)"; tiergloss["R4"] = "R4 (high-risk)"
+    print tiergloss[tier]
+    print "Workflow mode: " wmode " (" wsrc ")"
+    print "## Blocked by"
+    print (B == "" ? "(not in plan)" : B)
+    print "## Read first"
+    print (R == "" ? "(Lead: 2-3 files + the pattern to copy — the owner never re-surveys the repo)" : R)
+    # Each Blocked-by task record file (its Handoff section is what this task
+    # consumes); the plan file stays one line per task, never the handoff board.
+    tbase = planpath; sub(/^.*\//, "", tbase); sub(/\.md$/, "", tbase)
+    rname = tbase; sub(/-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/, "", rname); rname = rname "-task" (want + 0)
+    if (B != "") {
+      bm = blockedrefs(B)
+      while (match(bm, /[0-9]+/)) {
+        br = substr(bm, RSTART, RLENGTH) + 0; bm = substr(bm, RSTART + RLENGTH)
+        if (!(br in bseen)) {
+          bseen[br] = 1
+          rfile = sprintf("%s/docs/rolepod/tasks/%s/task-%02d.md", baseroot, tbase, br)
+          hf = handoff_of(rfile, 600)
+          if (hf != "") printf "Handoff of Task %d (full receipt %s):\n%s", br, rfile, hf
+          else print rfile
+        }
+      }
+    }
+    print "## Files allowed"
+    if (acnt == 0) print "(not in plan)"
+    else for (i = 1; i <= acnt; i++) print "- " allowedord[i]
+    printf "- Canonical task receipt %s/docs/rolepod/tasks/%s/task-%02d.md (base checkout only)\n", baseroot, tbase, want + 0
+    # Files forbidden prints only when a cohesion contract exists; without
+    # one the Also touched / NEEDS rules live in implement-plan.
+    if (hascontract) {
+      print "## Files forbidden"
+      for (i = 1; i <= tn; i++) { p = touchorder[i]; if (!(p in allowedset)) print "- " p }
+      # Guarded against Files allowed the same way the touch-list loop above
+      # is (a do-not-touch path that also landed in Files allowed must not
+      # print twice or contradict the allowed list), AND against touchseen —
+      # a path already printed by the touch-list loop above must not print a
+      # second time just because it is ALSO on the do-not-touch list.
+      for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " dntdisp[p] }
+      print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
+    }
+    print "## Change"
+    print (Ch == "" ? "(not in plan)" : Ch)
+    # Canonical sentences: every contract Shared-interfaces id this task cites
+    # (a whole token in Change, Proof or Done when), in id order, quoted verbatim.
+    # No contract, no entries or no cited id prints nothing (byte-identical brief).
+    if (hascontract && nsi > 0) {
+      cited = Ch "\n" Pr "\n" DW
+      nc = 0
+      for (i = 1; i <= nsi; i++) {
+        if (cited ~ ("(^|[^A-Za-z0-9])" sids[i] "([^A-Za-z0-9]|$)") && sitext[sids[i]] != "") cl2[++nc] = sids[i]
+      }
+      for (i = 2; i <= nc; i++) {
+        v = cl2[i]; j = i - 1
+        while (j >= 1 && substr(cl2[j], 2) + 0 > substr(v, 2) + 0) { cl2[j + 1] = cl2[j]; j-- }
+        cl2[j + 1] = v
+      }
+      if (nc > 0) {
+        print "## Canonical sentences"
+        for (i = 1; i <= nc; i++) { print cl2[i] ":"; print sitext[cl2[i]] }
+      }
+    }
+    # Verbatim, never cleared before this point — every fenced line that
+    # was not itself joined into a prose field (Files, Owner, Proof, Check,
+    # Command, Blocked by, or a fence before any field at all) lands here,
+    # so nothing is silently dropped. Printed only when non-empty — an
+    # unfenced plan must stay byte-identical (the Unchanged clause).
+    if (plantext != "") { print "## Plan text"; print plantext }
+    print "## Test / evidence"
+    print (Te == "" ? "(not in plan)" : Te)
+    # An undeleted template placeholder (a value starting "<") is not a
+    # real field — same convention as Proof above and the bare-path token
+    # skip in Read first.
+    if (Ef != "" && Ef !~ /^</) { print "## Expected failing signal"; print Ef }
+    print "## Command"
+    print (Cmd == "" ? "(not in plan)" : Cmd)
+    print "## Proof"
+    # An undeleted template placeholder ("<the one claim...> :: `<the command
+    # that proves it>`") is not a real Proof — same convention as the bare-path
+    # token skip above (a value opening with "<" is a hint, never printed).
+    if (Pr == "" || Pr ~ /^</) print "none"
+    else {
+      # Split on the FIRST " :: " only — a claim never contains that token,
+      # and the command (kept exactly as written, backticks included) may
+      # itself hold a pipe or a quoted string that must survive byte-for-byte.
+      psep = index(Pr, " :: ")
+      if (psep > 0) {
+        pclaim = trim(substr(Pr, 1, psep - 1))
+        pcmd = trim(substr(Pr, psep + 4))
+      } else {
+        pclaim = trim(Pr)
+        pcmd = ""
+      }
+      print pclaim
+      if (pcmd != "") print pcmd
+    }
+    print "## Done when"
+    print (DW == "" ? "(not in plan)" : DW)
+    if (Of != "" && Of !~ /^</) { print "## On fail"; print Of }
+    printf "Canonical task receipt: %s/docs/rolepod/tasks/%s/task-%02d.md\n", baseroot, tbase, want + 0
+    # C2: pool on and an R3 / R4 task → each lens runs external; printed under the lens line, never on R2 / R1.
+    c2 = ""
+    xpool = 0
+    if (ENVIRON["RP_BRIEF_POOLRD"] != "" && (tier == "R3" || tier == "R4")) {
+      pcmd = "python3 -I \"$RP_BRIEF_POOLRD\" pool 2>/dev/null"
+      while ((pcmd | getline pl) > 0) if (pl == "enabled=on") { xpool = 1; break }
+      close(pcmd)
+    }
+    if (xpool == 1 && (tier == "R3" || tier == "R4")) c2 = "Pool on → each lens runs external instead: `bash <cross-family skill folder>/scripts/cross-family.sh --kind review --lens spec --brief <this brief> --attach <diff> --detach`, the same with `--lens standards`, then `--collect <job> --timeout 540` for each in the foreground (exit 6 = still running: run it again); a lens whose run fails, comes back weak or is refused → `rolepod-reviewer` with that lens, same round."
+    print "## Reviewers"
+    # One cell of the review set (rsetcell, C61) for the only code task
+    # of its track; any other R2 / R3 / R4 task is covered by its track-end review.
+    if (tier == "R1" || onlycode == 1) {
+      print rsetcell(wmode, tier, "")
+      if (c2 != "") print c2
+    } else print "`none` — the track-end review covers this task"
+    print "## Bounds"
+    if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
+    else if (tbranch != "") printf "- Edit only Files allowed under ../%s-wt-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", repo, tpath, baseroot, tbase, want + 0
+    else printf "- Edit only Files allowed under ../%s-wt-%s-t%s-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", repo, feat, want, tslug, baseroot, tbase, want + 0
+    print "- Return with passing scoped Command evidence; run the repo commit check once. Review reports: .rolepod/evidence/review/" rname "-<lens>.md, <lens> one of spec · standards · security · adversarial · perf · ui · arch."
+    printf "- Write your decision brief to %s/docs/rolepod/tasks/%s/task-%02d.md on the base checkout; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", baseroot, tbase, want + 0
+    print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
+    print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals. Your chat reply stays within 12 lines: status, receipt path, Command tail, reviewer verdicts + report paths, residuals; the receipt holds the rest."
+    if (ENVIRON["ROLEPOD_BRIEF_FAILURE_POLICY"] != "") { print "## Failure policy"; print ENVIRON["ROLEPOD_BRIEF_FAILURE_POLICY"] }
+  }
+  '
+  BRIEF_ROOT="$(git -C "$(dirname "$PLAN")" rev-parse --show-toplevel 2>/dev/null || pwd)"
+  BRIEF_RECEIPT_ROOT="$BRIEF_ROOT"
+  BRIEF_BRANCH="$(git -C "$BRIEF_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  BRIEF_BASE_ROOT="$(git -C "$BRIEF_ROOT" config --get "branch.$BRIEF_BRANCH.rolepod-base-root" 2>/dev/null)"
+  [ -n "$BRIEF_BASE_ROOT" ] && [ -d "$BRIEF_BASE_ROOT" ] && BRIEF_RECEIPT_ROOT="$BRIEF_BASE_ROOT"
+  # slugged: the worktree command is later split on whitespace (ticket.sh start)
+  BRIEF_REPO="$(basename "$BRIEF_ROOT" | sed 's/[^A-Za-z0-9._-]/-/g')"
+  # <git-root>/.rolepod/risk-paths — parsed exactly like precommit-gate.sh risk_filter.
+  RP_RISK_ADD=""; RP_RISK_EXCL=""
+  if [ -f "$BRIEF_ROOT/.rolepod/risk-paths" ]; then
+    RP_RISK_ADD=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' -e '/^-/d' -e 's/^+//' "$BRIEF_ROOT/.rolepod/risk-paths" 2>/dev/null | paste -sd'|' - 2>/dev/null || true)
+    RP_RISK_EXCL=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$BRIEF_ROOT/.rolepod/risk-paths" 2>/dev/null | grep '^-' 2>/dev/null | sed 's/^-//' | paste -sd'|' - 2>/dev/null || true)
+  fi
+  # Fail open like the gate: a pattern awk cannot compile is dropped (built-ins only),
+  # never a brief cut off mid-way. Probed with awk itself — grep -E accepts a different set.
+  rp_ere_ok() { printf 'x\n' | RP_P="$1" awk '{ if ($0 ~ tolower(ENVIRON["RP_P"])) n = 1 }' >/dev/null 2>&1; }
+  [ -z "$RP_RISK_ADD" ] || rp_ere_ok "$RP_RISK_ADD" || RP_RISK_ADD=""
+  [ -z "$RP_RISK_EXCL" ] || rp_ere_ok "$RP_RISK_EXCL" || RP_RISK_EXCL=""
+  export RP_RISK_ADD RP_RISK_EXCL
+  # The task track branch (empty when the plan has no ## Tracks, or the task
+  # names no listed track — then the per-task worktree line stays as it was).
+  BRIEF_FEATURE=$(basename "$PLAN" .md | sed 's/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-//')
+  BRIEF_TBRANCH=$(awk -v rx="$TASK_RX" -v mode=brief -v want="$BRIEF_N" -v feature="$BRIEF_FEATURE" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")
+  [ "$BRIEF_PLANWT" = 1 ] && BRIEF_TBRANCH="$BRIEF_FEATURE/plan"
+  # A task that is its track's only code task (a code task = Owner not Lead,
+  # tier not R1 — ticket.sh's rule) reviews itself: the lenses line below.
+  # Track: `**Track:**` under `## Tracks`; else one track `plan` (Sequential or
+  # --plan-worktree); else every task is its own track. The sibling tier comes
+  # from a guarded recursive --brief.
+  BRIEF_ONLYCODE=0
+  if [ -z "${ROLEPOD_BRIEF_NOREC:-}" ]; then
+    BRIEF_SCAN=$(awk -v want="$BRIEF_N" -v rx="$TASK_RX" "$FENCE_AWK$FIELD_AWK"'
+      fenceline($0) { next }
+      /^## / { cur = ""; if ($0 ~ /^## Tracks[[:space:]]*$/) hast = 1; if ($0 ~ /^## Parallel layout/) pl = 1; else if (pl) pl = 2; next }
+      pl == 1 && !plseen && trim($0) != "" { plseen = 1; if ($0 ~ /^Sequential/) seq = 1 }
+      $0 ~ rx { id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id); cur = id; order[++n] = id; next }
+      cur != "" {
+        if (fieldgate($0, "Track") && !(cur in trk)) { v = fieldval($0, "Track"); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v); trk[cur] = v; next }
+        if (fieldgate($0, "Owner") && !(cur in own)) { v = fieldbody($0, "Owner"); gsub(/\*/, "", v); own[cur] = trim(v); next }
+      }
+      END {
+        print "M " (hast ? 1 : 0) " " (seq ? 1 : 0)
+        for (k = 1; k <= n; k++) { t = order[k]; print "R " t "\037" trk[t] "\037" own[t] }
+      }
+    ' "$PLAN")
+    BRIEF_HAST=$(printf '%s\n' "$BRIEF_SCAN" | awk '/^M /{print $2}')
+    BRIEF_SEQ=$(printf '%s\n' "$BRIEF_SCAN" | awk '/^M /{print $3}')
+    BRIEF_MYT=$(printf '%s\n' "$BRIEF_SCAN" | awk -F'\037' -v want="$BRIEF_N" '/^R /{ id=$1; sub(/^R /,"",id); if (id==want) print $2 }')
+    BRIEF_CODE=0
+    lead_rx='^Lead([[:space:]\(]|$)'
+    while IFS=$'\037' read -r bid btrack bown; do
+      bid="${bid#R }"
+      if [ "$BRIEF_HAST" = 1 ]; then [ "$btrack" = "$BRIEF_MYT" ] || continue
+      elif [ "$BRIEF_SEQ" = 1 ] || [ "$BRIEF_PLANWT" = 1 ]; then :
+      else [ "$bid" = "$BRIEF_N" ] || continue; fi
+      if [[ "$bown" =~ $lead_rx ]] ||[[ "$bown" == *"(Lead self-do)"* ]]; then continue; fi
+      if [ "$bid" = "$BRIEF_N" ]; then BRIEF_CODE=$((BRIEF_CODE + 1)); continue; fi
+      btier=$(ROLEPOD_BRIEF_NOREC=1 bash "${BASH_SOURCE[0]}" --brief "$bid" "$PLAN" --main 2>/dev/null | awk '/^## Tier/ { getline; print substr($0, 1, 2); exit }')
+      [ "$btier" = "R1" ] || BRIEF_CODE=$((BRIEF_CODE + 1))
+    done <<EOF
+$(printf '%s\n' "$BRIEF_SCAN" | awk '/^R /')
+EOF
+    [ "$BRIEF_CODE" -eq 1 ] && BRIEF_ONLYCODE=1
+  fi
+  rp_resolve_wmode
+  # Pool on/off for the external lens line: the awk reads it only for an R3 / R4 brief (RP_BRIEF_POOLRD);
+  # any reader error or a missing reader = off; the recursive tier call never reads it.
+  RP_BRIEF_POOLRD=""
+  if [ -z "${ROLEPOD_BRIEF_NOREC:-}" ] && [ -f "$BRIEF_READER" ]; then RP_BRIEF_POOLRD="$BRIEF_READER"; fi
+  export RP_BRIEF_POOLRD ROLEPOD_PROJECT_ROOT="${ROLEPOD_PROJECT_ROOT:-$BRIEF_ROOT}"
+  BRIEF_FAILURE_POLICY="$(awk "$FENCE_AWK"'
+    fenceline($0) { if (inside) print; next }
+    /^## Failure policy([^A-Za-z0-9_-].*)?$/ { inside = 1; next }
+    /^## / { inside = 0 }
+    inside { print }
+  ' "$PLAN")"
+  if [ -n "$CONTRACT" ]; then
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$TAGSPAN_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+  else
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$TAGSPAN_AWK$BRIEF_AWK" "$PLAN"
+  fi
+  exit $?
+fi
+
+PLAN="${1:-}"
+CONTRACT="${2:-}"
+
+if [ -z "$PLAN" ] || [ ! -f "$PLAN" ]; then
+  echo "usage: plan-lint.sh <plan.md> [contract.md]" >&2
+  exit 2
+fi
+
+fail=0
+
+# ── 1. Failure policy ────────────────────────────────────────────────────
+# Fence-aware — a `## Failure policy` heading INSIDE a fenced example (an
+# edit spec quoting the template) must never satisfy this, same as it never
+# opens a section anywhere else in the script.
+if awk "$FENCE_AWK"'
+  fenceline($0) { next }
+  /^## Failure policy/ { found = 1 }
+  END { exit(found ? 0 : 1) }
+' "$PLAN"; then
+  echo "  ✓ Failure policy present"
+else
+  echo "  ✗ missing '## Failure policy' — the build loop has no circuit breaker"
+  fail=1
+fi
+
+# ── 2. Command per task ──────────────────────────────────────────────────
+# Walk each task block on its own — an aggregate count let one task's
+# extra Commands cover for a sibling with none, and 0 tasks passed 0 >= 0.
+# 'Command:' still counts only inside task blocks (never Failure-policy prose).
+# Heading shapes: `### Task 1:` (template) and `### T1 —` (a real plan
+# from a user project, which this lint rejected wholesale before v2.90.0). TASK_RX is set
+# at the top of the file — shared with --brief, not re-declared here.
+# TASKS is counted through the same fence-aware pass as MISSING, never
+# `grep -Ec` — a fenced `### Task 9` line must not inflate the count. The
+# single awk call prints tagged lines (N = the count, M = a task missing its
+# Command, U = the line an unclosed fence opened on, if any) that the shell
+# below splits back apart.
+TASKPASS=$(awk -v rx="$TASK_RX" "$FENCE_AWK$FIELD_AWK"'
+  BEGIN { tcount = 0 }
+  fenceline($0) { next }
+  $0 ~ rx     { if (t != "" && !c) print "M " t; if (t != "" && !fl) print "L " t; t = $0; c = 0; fl = 0; tcount++; next }
+  /^## /      { if (t != "" && !c) print "M " t; if (t != "" && !fl) print "L " t; t = ""; next }
+  t != "" && fieldgate($0, "Command") { c = 1 }
+  t != "" && fieldgate($0, "Files") { fl = 1 }
+  END {
+    if (t != "" && !c) print "M " t
+    if (t != "" && !fl) print "L " t
+    print "N " tcount
+    if (fence_is_open()) print "U " fence_open_line()
+  }
+' "$PLAN")
+# A 2-char tag ("M ", "N ", "U ") plus substr($0, 3) for the rest — not
+# `awk -F'\t'` splitting on $2 — so a task heading that happens to carry a
+# literal tab of its own is never truncated at the first internal tab.
+TASKS=$(printf '%s\n' "$TASKPASS" | awk '/^N /{print substr($0,3)}')
+MISSING=$(printf '%s\n' "$TASKPASS" | awk '/^M /{print substr($0,3)}')
+UNCLOSED_LINE=$(printf '%s\n' "$TASKPASS" | awk '/^U /{print substr($0,3)}')
+if [ "${TASKS:-0}" -eq 0 ]; then
+  echo "  ✗ no task blocks found (### Task N: / ### TN —) — nothing for the build loop to run"
+  fail=1
+elif [ -z "$MISSING" ]; then
+  echo "  ✓ every task carries a Command ($TASKS/$TASKS)"
+else
+  while IFS= read -r t; do
+    [ -n "$t" ] && echo "  ✗ missing Command: ${t#\#\#\# } — a Command-less task cannot be verified by the loop"
+  done <<EOF
+$MISSING
+EOF
+  fail=1
+fi
+NOFILES=$(printf '%s\n' "$TASKPASS" | awk '/^L /{print substr($0,3)}')
+if [ -n "$NOFILES" ]; then
+  while IFS= read -r t; do
+    [ -n "$t" ] && echo "  ✗ missing Files: ${t#\#\#\# } — a Files-less task has no Files allowed for its owner"
+  done <<EOF
+$NOFILES
+EOF
+  fail=1
+fi
+if [ -n "$UNCLOSED_LINE" ]; then
+  echo "  ✗ unclosed code fence opened at line $UNCLOSED_LINE"
+  fail=1
+fi
+
+# Parallel layout is read once here — the graph check below needs to know
+# whether Sequential was CHOSEN (then extra roots are an advisory, not a
+# mistake), and the ownership check needs the contract path.
+# Anchored to a line START (optional bullet) — a bare substring grep let
+# 'Not sequential — two tracks run concurrently' skip the ownership check.
+LAYOUT=$(awk "$FENCE_AWK"'
+  fenceline($0) { next }
+  /^## Parallel layout/ { f = 1; next }
+  /^## / { f = 0; next }
+  f
+' "$PLAN")
+SEQUENTIAL=0
+printf '%s' "$LAYOUT" | grep -qiE '^[[:space:]]*([-*][[:space:]]*)?sequential' && SEQUENTIAL=1
+
+# ── 3. Blocked-by graph ──────────────────────────────────────────────────
+# One awk pass: task id from the heading, refs from the `Blocked by:` line
+# (the leading task list, via blockedrefs; "none" / "—" / "-" = no
+# blockers). Then resolve every ref, count fields, and run Kahn's algorithm
+# for a cycle. Output lines are prefixed so the shell can route them:
+# E = fail, A = advisory.
+GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
+  function addpath(p, c) {
+    if (!((p, c) in pathseen)) {
+      if (!(p in pathtasks)) pathorder[++pn] = p
+      pathtasks[p] = pathtasks[p] " " c
+      pathseen[p, c] = 1
+    }
+  }
+  # Fence rule first — a fenced task heading / Blocked-by / Files / Owner
+  # line never joins the graph.
+  fenceline($0) { next }
+  $0 ~ rx {
+    id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+    if (id in seen) dup[id] = 1
+    cur = id; bcont = ""; n++; order[n] = id; seen[id] = 1; next
+  }
+  /^## / { cur = "" ; next }
+  cur != "" && /Blocked by:/ && !(cur in has) {
+    # A field is only a line whose trimmed start is the label (with or
+    # without a leading dash / checkbox bullet and bold markers) --
+    # a prose sentence elsewhere on the line that merely quotes the
+    # label text is never the field.
+    if (!fieldgate($0, "Blocked by")) next
+    # The raw value is kept whole (wrapped lines join below) and parsed in
+    # END by blockedrefs: "none" or a dash parse to no refs, asides come off
+    # ("Task 1 (why), Task 3 (why)" is {1,3}; "Task 3 — landed in v2.90.0" is {3}).
+    has[cur] = 1; braw[cur] = fieldval($0, "Blocked by"); bcont = cur
+    next
+  }
+  # A wrapped Blocked-by value: unbulleted continuation lines, the same
+  # lines ticket.sh and addrefs read.
+  bcont != "" && bcont == cur && trim($0) != "" && $0 !~ /^[[:space:]]*[-*][[:space:]]/ && $0 !~ /^#/ { braw[cur] = braw[cur] " " trim($0); next }
+  /^[[:space:]]*[-*][[:space:]]/ || /^#/ { bcont = "" }
+  # Advisory (v2.144.0) inputs, gathered off the SAME task blocks: every
+  # path on a task first "Files:" line (bold or not — a prefactor-smell
+  # candidate needs no more than the path and the task ids), backticked OR
+  # bare (real plans, incl. the template + examples, write Files as a plain
+  # comma-separated list — a backtick-only parse was a no-op on them), and
+  # each task first "Owner:" value (for the nothing-to-dispatch check).
+  cur != "" && /Files:/ && !(cur in filesdone) {
+    # Gate via fieldgate() (bullet consumed before bold strip) — the
+    # extracted value below keeps the raw line so a glob like
+    # `src/**/*.ts` is untouched.
+    if (!fieldgate($0, "Files")) next
+    filesdone[cur] = 1
+    nfp = filepaths(fieldbody($0, "Files"), fp)
+    for (i = 1; i <= nfp; i++) addpath(fp[i], cur)
+    next
+  }
+  cur != "" && /Owner:/ && !(cur in ownerdone) {
+    if (!fieldgate($0, "Owner")) next
+    ownerdone[cur] = 1; v = fieldbody($0, "Owner"); gsub(/\*/, "", v); v = trim(v)
+    owner[cur] = v
+    next
+  }
+  END {
+    if (n == 0) exit 0
+    for (k = 1; k <= n; k++) {
+      t = order[k]; m = blockedrefs(braw[t])
+      # A field that is not none-ish yet parses to no ref leaves the task
+      # looking unblocked (prose such as "after Task 3 lands", a leftover
+      # placeholder, an empty value). Tested before the loop consumes m.
+      # None-ish: "none" as a word, or a dash whose reason names no task.
+      if ((t in has) && m == "") {
+        bval = trim(braw[t]); blow = tolower(bval)
+        nonish = (blow ~ /^none([^a-z0-9]|$)/)
+        if (bval ~ /^(-|—|–)([[:space:]]|$)/ && blow !~ /task ?[0-9]/) nonish = 1
+        if (!nonish) {
+          # The value is cut to showcap bytes without splitting a UTF-8
+          # sequence (an awk that slices bytes would print half a character).
+          showcap = 40; shown = substr(bval, 1, showcap)
+          if (substr(bval, showcap + 1, 1) ~ /^[\200-\277]$/) {
+            while (shown != "" && substr(shown, length(shown), 1) ~ /^[\200-\277]$/) shown = substr(shown, 1, length(shown) - 1)
+            shown = substr(shown, 1, length(shown) - 1)
+          }
+          print "A Task " t " Blocked by \"" shown "\" names no task — start it with Task N, or write none"
+        }
+      }
+      while (match(m, /[0-9]+/)) {
+        r = substr(m, RSTART, RLENGTH); m = substr(m, RSTART + RLENGTH)
+        if (!(t SUBSEP r in edge)) { edge[t, r] = 1; refs[t] = refs[t] " " r }
+      }
+    }
+    for (d in dup) print "E duplicate task id " d " — two blocks carry the same number; Blocked by cannot name either"
+    withf = 0; for (k = 1; k <= n; k++) if (order[k] in has) withf++
+    if (withf == 0) print "A no Blocked by fields — order is prose only; add one per task"
+    # The graph-resolution block below (missing-field / unresolved-ref /
+    # cycle checks) needs at least one Blocked by field to mean anything —
+    # skipped (not exited) when withf == 0, so the two advisories further
+    # down (neither depends on this graph resolving) still run on a legacy
+    # plan that never uses Blocked by at all.
+    if (withf > 0) {
+    for (k = 1; k <= n; k++) if (!(order[k] in has)) print "E Task " order[k] " has no Blocked by (other tasks do) — state its blockers or none"
+    # Resolve refs only now — a blocker may be declared later in the file.
+    # An unresolved or self ref is reported and dropped from the graph, so
+    # it cannot masquerade as a cycle below.
+    for (k = 1; k <= n; k++) {
+      t = order[k]; split(refs[t], rs, " ")
+      for (j in rs) { r = rs[j]; if (r == "") continue
+        if (!(r in seen)) { print "E Task " t " is blocked by Task " r " — no such task in this plan"; edge[t, r] = 0 }
+        else if (r == t)  { print "E Task " t " blocks itself"; edge[t, r] = 0 }
+        else { indeg[t]++; nxt[r] = nxt[r] " " t }
+      }
+    }
+    # Kahn: indeg = number of RESOLVED blockers; peel roots
+    done = 0; roots = ""
+    for (k = 1; k <= n; k++) { t = order[k]; if (indeg[t] + 0 == 0) { q[++qt] = t; roots = roots (roots == "" ? "" : ", ") t } }
+    while (qh < qt) { t = q[++qh]; done++
+      for (k = 1; k <= n; k++) { u = order[k]; if ((u, t) in edge) { edge[u, t] = 0; indeg[u]--; if (indeg[u] == 0) q[++qt] = u } } }
+    if (done < n) { c = ""; for (k = 1; k <= n; k++) if (indeg[order[k]] > 0) c = c (c == "" ? "" : ", ") order[k]
+      if (c != "") print "E Blocked-by cycle among Tasks " c " — nothing can start" }
+    else if (seq && qt > 0 && index(roots, ",")) print "A parallel candidates: Tasks " roots " have no blockers — Sequential chosen, fine if the layout line says why"
+    }
+    # ── Advisory (v2.144.0a): prefactor smell ─────────────────────────────
+    # Two tasks sharing a Files path with no dependency path between them,
+    # either way, in the (already-resolved) Blocked-by graph. Reuses nxt[]
+    # (built above alongside indeg[]) for a per-task BFS reachability set —
+    # vis[t, w] means w is reachable from t, i.e. t blocks w transitively.
+    for (k = 1; k <= n; k++) {
+      t = order[k]; qh2 = 0; qt2 = 0
+      qt2++; q2[qt2] = t; vis[t, t] = 1
+      while (qh2 < qt2) {
+        qh2++; u = q2[qh2]
+        split(nxt[u], kids, " ")
+        for (ki in kids) {
+          w = kids[ki]; if (w == "") continue
+          if (!((t, w) in vis)) { vis[t, w] = 1; qt2++; q2[qt2] = w }
+        }
+      }
+    }
+    for (pi = 1; pi <= pn; pi++) {
+      p = pathorder[pi]; np = split(pathtasks[p], ids, " ")
+      for (i = 1; i <= np; i++) for (j = i + 1; j <= np; j++) {
+        a = ids[i]; b = ids[j]
+        if (a + 0 > b + 0) { tmp = a; a = b; b = tmp }
+        if (!((a, b) in vis) && !((b, a) in vis))
+          print "F ⚠ prefactor smell: `" p "` in Task " a " and Task " b " with no edge — extract a module first, or make one block the other"
+      }
+    }
+    # ── Advisory (v2.144.0b): nothing to dispatch ─────────────────────────
+    # Every task Owner: line names Lead (plain "Lead", "Lead (…)", or a
+    # role annotated "(Lead self-do)") on a plan big enough to route.
+    if (n >= 3) {
+      all_lead = 1
+      for (k = 1; k <= n; k++) {
+        t = order[k]
+        if (!(t in ownerdone)) { all_lead = 0; continue }
+        ov = owner[t]
+        lead = (ov ~ /^Lead$/) || (ov ~ /^Lead[[:space:](]/) || (ov ~ /\(Lead self-do\)/)
+        if (!lead) all_lead = 0
+      }
+      if (all_lead) print "O ⚠ every Owner is Lead (" n " tasks) — nothing to dispatch"
+    }
+  }
+' "$PLAN")
+GRAPH_E=$(printf '%s\n' "$GRAPH" | grep '^E ' || true)
+GRAPH_A=$(printf '%s\n' "$GRAPH" | grep '^A ' || true)
+if [ -n "$GRAPH_E" ]; then
+  printf '%s\n' "$GRAPH_E" | sed 's/^E /  ✗ /'
+  fail=1
+elif [ "${TASKS:-0}" -gt 0 ] && [ -z "$GRAPH_A" ]; then
+  echo "  ✓ Blocked-by graph resolves, no cycle ($TASKS tasks)"
+elif [ -n "$GRAPH_A" ] && ! printf '%s' "$GRAPH_A" | grep -q 'no Blocked by fields'; then
+  echo "  ✓ Blocked-by graph resolves, no cycle ($TASKS tasks)"
+fi
+[ -n "$GRAPH_A" ] && printf '%s\n' "$GRAPH_A" | sed 's/^A /  · /'
+
+# ── 4. Tracks (worktree-track spec; runs before 5, which exits early on a
+# Sequential plan) — silent for a Sequential plan with no ## Tracks and
+# no Track field (a non-Sequential one fails when two tasks share a file or
+# one Blocked-by another); else every task names a listed track, one file lives in
+# one track, and Blocked by crosses tracks only at a track's first task.
+TRACKS_OUT=$(awk -v rx="$TASK_RX" -v mode=lint -v feature="" -v seq="$SEQUENTIAL" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")
+if printf '%s\n' "$TRACKS_OUT" | grep -q '^E '; then
+  printf '%s\n' "$TRACKS_OUT" | grep '^E ' | sed 's/^E /  ✗ /'
+  fail=1
+elif printf '%s\n' "$TRACKS_OUT" | grep -q '^OK '; then
+  printf '%s\n' "$TRACKS_OUT" | grep '^OK ' | sed 's/^OK /  ✓ /'
+fi
+
+# ── 3c. R4 tasks are named — a task that is R4 by a risk path needs a line under
+# `## High-risk surfaces touched` that names it. Each task's tier is read from the
+# --brief computation itself (RP_TIER3C), so the two never disagree; --brief never
+# fails on this rule. A task --brief cannot read (no Files) is 2b's finding, skipped here.
+R4N=0; R4U=0
+for tid in $(awk -v rx="$TASK_RX" "$FENCE_AWK"'
+  fenceline($0) { next }
+  $0 ~ rx { id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id); print id }
+' "$PLAN"); do
+  case "$(RP_TIER3C=1 ROLEPOD_BRIEF_NOREC=1 ROLEPOD_SESSION_MODE=lite ROLEPOD_SESSION_SOURCE=default bash "${BASH_SOURCE[0]}" --brief "$tid" "$PLAN" ${CONTRACT:+"$CONTRACT"} --main 2>/dev/null | awk '/^3C /{print $3; exit}')" in
+    unnamed) echo "  ✗ R4 task without a high-risk line: Task $tid — name it under ## High-risk surfaces touched with its surface"; R4U=$((R4U + 1)); fail=1 ;;
+    named) R4N=$((R4N + 1)) ;;
+  esac
+done
+[ "$R4U" -eq 0 ] && [ "$R4N" -gt 0 ] && echo "  ✓ every R4 task is named under ## High-risk surfaces touched"
+
+# ── Advisories (v2.144.0) — never fail; a Sequential plan may be legitimate.
+GRAPH_F=$(printf '%s\n' "$GRAPH" | grep '^F ' || true)
+GRAPH_O=$(printf '%s\n' "$GRAPH" | grep '^O ' || true)
+[ -n "$GRAPH_F" ] && printf '%s\n' "$GRAPH_F" | sed 's/^F /  /'
+[ -n "$GRAPH_O" ] && printf '%s\n' "$GRAPH_O" | sed 's/^O /  /'
+
+# ── 5. Parallel ownership completeness ───────────────────────────────────
+if [ "$SEQUENTIAL" -eq 1 ]; then
+  echo "  ✓ sequential layout — ownership check not applicable"
+  echo "plan-lint: $([ "$fail" -eq 0 ] && echo PASS || echo FAIL)"
+  exit "$fail"
+fi
+
+# Resolve the contract file.
+if [ -z "$CONTRACT" ]; then
+  REL=$(printf '%s' "$LAYOUT" | grep -oE '`[^`]+\.md`' | head -1 | tr -d '`')
+  if [ -n "$REL" ]; then
+    PLAN_DIR="$(cd "$(dirname "$PLAN")" && pwd)"
+    ROOT="$(git -C "$PLAN_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$PLAN_DIR")"
+    for cand in "$PLAN_DIR/$REL" "$ROOT/$REL" "$REL"; do
+      [ -f "$cand" ] && CONTRACT="$cand" && break
+    done
+  fi
+fi
+
+if [ -z "$CONTRACT" ] || [ ! -f "$CONTRACT" ]; then
+  if [ -n "$LAYOUT" ]; then
+    echo "  ✗ parallel layout declared but no cohesion contract found — Iron Rule 2: no parallel agents without a contract"
+    fail=1
+  else
+    echo "  ✗ no '## Parallel layout' section — declare 'Sequential — single owner.' or the contract path"
+    fail=1
+  fi
+  echo "plan-lint: FAIL"
+  exit 1
+fi
+
+OWNERSHIP=$(awk "$FENCE_AWK"'
+  fenceline($0) { next }
+  /^## File ownership/ { f = 1; next }
+  /^## / { f = 0; next }
+  f
+' "$CONTRACT")
+if [ -z "$OWNERSHIP" ]; then
+  echo "  ✗ contract has no '## File ownership' section"
+  echo "plan-lint: FAIL"
+  exit 1
+fi
+
+# Every path in any task's Files field must appear under exactly one
+# owner line. Each line is read by the shared taskpaths() (the same reader
+# as --brief Files forbidden): only its leading path list, a dash aside
+# cut, every note dropped — a backticked token inside a `( … )` note (an
+# explanatory aside, e.g. "moved from the old `agent-frontmatter/` dir")
+# is commentary here, never a second file to own; contract ownership is
+# compared by exact string, so a leaked note token always reads unowned.
+# This also means a genuine companion path written as a note (the `--brief`
+# per-task Files field allows "`x.py` (+ `tests/static/x.sh`)" to add a
+# real companion) is NOT ownership-checked when written in a note — list it
+# as its own path instead (Files allowed keeps a note companion; Files
+# forbidden and check 5 read the leading path list only, so neither sees it).
+# A Files continuation ends at a blank line, the next bullet or the line that
+# opens a dash aside. Every backticked token in the list counts (a dotless
+# `CODEOWNERS` too).
+FILES=$(awk -v rx="$TASK_RX" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK"'
+  fenceline($0) { next }
+  /^## / { t = 0; f = 0; next }
+  $0 ~ rx { t = 1; f = 0; next }
+  t && fieldgate($0, "Files") { f = 1; printf "%s", taskpaths(fieldbody($0, "Files")); if (tpaside) f = 0; next }
+  t && f && (trim($0) == "" || $0 ~ /^[-*][[:space:]]/) { f = 0 }
+  t && f { printf "%s", taskpaths(trim($0)); if (tpaside) f = 0 }
+' "$PLAN" | sort -u)
+if [ -z "$FILES" ]; then
+  echo "  ✗ parallel plan has no paths in any task Files field"
+  fail=1
+fi
+
+OWN_OK=1
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  # Count OWNER LINES that mention the exact backticked path.
+  N=$(printf '%s\n' "$OWNERSHIP" | grep -cF "\`$f\`" || true)
+  if [ "${N:-0}" -eq 0 ]; then
+    echo "  ✗ unowned file: \`$f\` — in a task Files field but under no owner in the contract"
+    OWN_OK=0; fail=1
+  elif [ "${N:-0}" -gt 1 ]; then
+    echo "  ✗ dual-owned file: \`$f\` — appears under $N owner lines; a path belongs to exactly one owner"
+    OWN_OK=0; fail=1
+  fi
+done <<EOF
+$FILES
+EOF
+[ "$OWN_OK" -eq 1 ] && [ -n "$FILES" ] && echo "  ✓ every touched file has exactly one owner"
+
+# L1: one role on two or more owner lines needs a task tag on each line.
+# Owner lines and labels are read exactly as --brief reads them: the first
+# backticked token is the label (a line with none is prose, ignored), a tag
+# between it and the colon is folded in, and the role is the label's first word.
+DUPROLES=$(printf '%s\n' "$OWNERSHIP" | awk "$TAGSPAN_AWK"'
+  match($0, /`[^`]+`/) {
+    label = substr($0, RSTART + 1, RLENGTH - 2)
+    rest = substr($0, RSTART + RLENGTH)
+    ci = index(rest, ":")
+    if (ci > 0) {
+      pretag = substr(rest, 1, ci - 1)
+      if (pretag !~ /`/ && has_tasktag(pretag)) label = label pretag
+    }
+    if (has_tasktag(label)) next
+    split(label, w, /[[:space:]]+/)
+    n[w[1]]++
+  }
+  END { for (r in n) if (n[r] >= 2) print r }
+' | sort)
+if [ -n "$DUPROLES" ]; then
+  while IFS= read -r r; do
+    echo "  ✗ two owner lines for \`$r\` carry no task tag — tag each with its task: \`$r (T<N>)\`"
+  done <<EOF
+$DUPROLES
+EOF
+  fail=1
+fi
+
+echo "plan-lint: $([ "$fail" -eq 0 ] && echo PASS || echo FAIL)"
+exit "$fail"

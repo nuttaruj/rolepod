@@ -43,6 +43,8 @@ CODEX_YAML_SET=$(find plugins/rolepod-codex/skills -path '*/agents/openai.yaml' 
 check "Codex agents/openai.yaml dirs equal the manual-invoke set (actual: $CODEX_YAML_SET)" "[ \"$CODEX_YAML_SET\" = \"$DMI_SET\" ]"
 check "each manual-invoke skill's Codex openai.yaml holds allow_implicit_invocation: false" \
   "for s in $DMI_SET; do grep -q 'allow_implicit_invocation: false' plugins/rolepod-codex/skills/\$s/agents/openai.yaml || exit 1; done"
+SHARED_YAML_SET=$(find skills -path '*/agents/openai.yaml' 2>/dev/null | sed 's#skills/##; s#/agents/openai.yaml##' | sort | tr '\n' ' ')
+check "shared skills/ openai.yaml dirs equal the manual-invoke set (actual: $SHARED_YAML_SET)" "[ \"$SHARED_YAML_SET\" = \"$DMI_SET\" ]"
 
 # Clause-chain guard: no prose line past 600 chars. The accretion shape
 # was a 2,528-char line carrying eight directives with nested exceptions —
@@ -67,7 +69,7 @@ fi
 # target stays under it (chars, not bytes); the count guards a missing tree.
 SKILL_20K=$(python3 -I - <<'PYEOF'
 import glob
-roots = ["plugins/rolepod/skills", "plugins/rolepod-cursor/skills", "plugins/rolepod-codex/skills",
+roots = ["skills", "plugins/rolepod/skills", "plugins/rolepod-cursor/skills", "plugins/rolepod-codex/skills",
          "build/rendered/antigravity/plugin/skills", "build/rendered/opencode/skills"]
 files = [f for r in roots for f in sorted(glob.glob(r + "/*/SKILL.md"))]
 bad = [f + "=" + str(n) for f in files for n in [len(open(f, encoding="utf-8").read())] if n >= 20000]
@@ -75,7 +77,7 @@ print(len(files), "; ".join(bad) or "none")
 PYEOF
 )
 SKILL_N=${SKILL_20K%% *}; OVER_20K=${SKILL_20K#* }
-check "every rendered SKILL.md is under 20,000 chars ($SKILL_N files; over: $OVER_20K)" "[ \"$SKILL_N\" -eq $((FS_SKILLS * 5)) ] && [ \"$OVER_20K\" = none ]"
+check "every rendered SKILL.md is under 20,000 chars ($SKILL_N files; over: $OVER_20K)" "[ \"$SKILL_N\" -eq $((FS_SKILLS * 6)) ] && [ \"$OVER_20K\" = none ]"
 
 # ── Standalone guard — plan task-block labels named in write-plan ─────
 # Every bold task-block label of plan-template's Task 1 block must appear

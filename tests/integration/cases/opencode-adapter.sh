@@ -2,7 +2,7 @@
 # opencode-adapter — structural fixture for the opencode adapter.
 # Locks the verified opencode facts (opencode.ai docs, checked 2026-10-03):
 #   - skills are native SKILL.md; frontmatter documents only name+description
-#     (rolepod's tier/phase/when_to_use are stripped at render)
+#     and opencode ignores unknown keys, so the one shared skill tree ships as is
 #   - agents/<name>.md — the FILENAME is the agent id (no name: field);
 #     frontmatter = description + mode: subagent
 #   - AGENTS.md is the global rules file and carries the always-on core
@@ -28,11 +28,11 @@ check "agent has mode: subagent"        "grep -q '^mode: subagent$' $P/agents/ro
 check "agent has no name: field"        "! grep -q '^name:' $P/agents/rolepod-scout.md"
 check "agent carries the agent protocol" "grep -q '^## Agent protocol' $P/agents/rolepod-scout.md"
 
-# Skill frontmatter stripped to name + description only.
+# One shared skill tree ships as is; core frontmatter carries only name, description, disable-model-invocation (no tier / phase).
 check "skill keeps name+description"    "grep -q '^name: write-spec$' $P/skills/write-spec/SKILL.md"
 check "skill drops tier field"          "! grep -q '^tier:' $P/skills/write-spec/SKILL.md"
 check "skill drops phase field"         "! grep -q '^phase:' $P/skills/write-spec/SKILL.md"
-check "skill drops disable-model-invocation (opencode two-field strip)" "! grep -q '^disable-model-invocation' $P/skills/deepen-codebase/SKILL.md"
+check "skill keeps disable-model-invocation (one tree; opencode ignores unknown keys)" "grep -q '^disable-model-invocation' $P/skills/deepen-codebase/SKILL.md"
 check "using-rolepod workflow helper has its canonical adjacent config reader" "[ -f $P/skills/using-rolepod/scripts/rolepod_config.py ]"
 
 # AGENTS.md carries the always-on core fragments.

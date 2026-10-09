@@ -1,0 +1,100 @@
+---
+name: security-review
+description: The security lens's method — model the threat, walk the diff at the brief's depth, report each BLOCKER / MAJOR with an exploit scenario. Use directly only when the user asks for a security audit.
+---
+
+# Security Review
+
+A diff or a system → a security verdict with severity-ranked findings at file:line, each BLOCKER / MAJOR with an exploit scenario and the repro that proves it.
+
+### 1. Take the depth
+
+- Depth comes from the brief. `depth: checklist` → one question under an Architecture heading, "Security concerns?" (secrets in code, basic input handling, an auth gate on an entry point); report any visible concern with a severity; trace nothing, look up no CVE, at most ~15 tool calls. `depth: full` → steps 2-5, and also check memory and performance leaks on the changed code. A brief naming no depth means full.
+- An audit with no diff → the paths the brief names, read end to end.
+
+Done when: the report's Read names the depth.
+
+### 2. Model the threat (full depth)
+
+- Fix the attacker and the compliance regime first: the brief names them; none named and no role card → audit against all three attackers (external user, authenticated user, insider) and say so in an `Assuming:` line.
+- Trust boundaries: where untrusted data enters — a request, an upload, a webhook, an external API response, a queue message, LLM output, a local value another process writes. Trust follows who wrote a value, not which channel delivered it.
+- Assets: what an attacker wants behind each boundary — credentials, PII, payment data, admin actions, money movement.
+- STRIDE per boundary as a fast lens, not a ceremony: spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege; one line per boundary, only the letters that apply.
+
+Done when: every changed path is tied to a boundary and an asset, or named out of scope.
+
+### 3. Walk the diff
+
+- Trace each boundary to its asset through the changed code, card by card (your role's Objective & Focus; none → the OWASP Top 10 categories), and record where each claim held or failed.
+- Prove a finding with a repro or a test inside the run scope the brief gives and name its command instead of pasting rerunnable logs; a step you inferred says so.
+
+Done when: every boundary from step 2 has a traced result at file:line.
+
+### 4. Grade and report
+
+- Hard stops, each a REJECT:
+  - A secret would land in code / log / response → REJECT.
+  - An auth check is missing on a new endpoint → REJECT.
+  - A user-controlled URL hits the internal network without an allowlist (SSRF) → REJECT.
+  - Crypto rolled by hand → REJECT, use a library.
+  - A token / cookie without `HttpOnly` / `Secure` / `SameSite` where required → REJECT.
+  - The compliance regime is unstated and the change crosses regulatory scope → return `BLOCKED:` naming the regimes in play — a wrong guess can ship a breach.
+
+High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`). A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
+
+- Grade each finding CRITICAL / HIGH / MEDIUM / LOW and record it as BLOCKER (CRITICAL, HIGH) / MAJOR (MEDIUM) / MINOR (LOW); the axis is `security`.
+- Every BLOCKER and MAJOR names an exploit scenario — who calls it, how, and what they get — and the repro or test that proves it, by command; a finding with no scenario is MINOR.
+- Repro, the one exception to "trace, never run": `git worktree add --detach .worktrees/<task>-repro <head>`, write and run the repro test there, then `git worktree remove --force .worktrees/<task>-repro` before you return; never touch the reviewed tree (H1 unchanged) and never install a dependency there. It cannot run → attach the repro test text and mark the finding "repro not run".
+- Your writes: the report, the security spec a billing / payments brief names (`security-spec: <path>`) before build, and test files only; product code that needs a change → a finding for the owner.
+- Write the report to the file the brief names, default `.rolepod/evidence/review/<task>-security.md`; its Read section names the threat model, the compliance regime and the depth:
+
+```markdown
+# <Feature / PR> Review
+
+## Scope
+<The diff and every changed file: `read` or `skipped — reason`; a skipped changed file makes the report partial.>
+**Snapshot H1 (immutable):** `<H1 tree id>` and `<diff hash>` from your brief (standalone: the range you took and its diff hash). Never relabel H1; a re-check writes its own report at H2.
+
+## Read
+<Your lens or role and what you covered: the files and behaviors read, the paths traced, and where each claimed behavior held or failed. On a clean review this is the evidence.>
+
+## Risk surfaces touched
+<Each touched risk surface, or `None`.>
+
+## Findings
+<Omit when clean. Severity ordered; each keeps severity, file:line, axis, issue, impact and fix direction.>
+- `file:line` — BLOCKER|MAJOR|MINOR — <axis> — <issue> — <impact> — <fix direction>
+
+- BLOCKER — fix before merge: a failure walked through the code that loses data, breaks security or permissions, moves money wrong or cannot be rolled back, or a behavior the spec requires that is missing or wrong.
+- MAJOR — fix before merge or push back; only a pre-existing MAJOR may be parked in Follow-ups with its reason: wrong or missing behavior that has a workaround or a narrow reach, a broken written project rule (cite its line), a measured performance regression, a test that does not prove what it claims, or a structure that will breed bugs.
+- MINOR — the author's call; it never opens a re-check or stops a merge: no behavior change and no written rule broken (readability, naming, style, taste). A nit is a MINOR.
+- A pushback on a BLOCKER or MAJOR closes only when the re-check holds it; an issue on a path the diff does not touch goes to Follow-ups at any level. A skill's own grading rule (the security grade, the adversarial Severity under doubt) sets the level for the findings it covers.
+
+## Questions
+<Omit when none. A question needs the author's answer, not a fix.>
+- `file:line` — <question>
+
+## Follow-ups
+<Omit when none. A pre-existing issue on an untouched path, or one outside a fix delta; each with its axis, never a verdict driver.>
+- `file:line` — <axis> — <issue>
+
+## Tests reviewed
+<Omit when none. Say whether the assertions, the mock boundary and the concurrency coverage are strong.>
+
+## Recommendation
+<APPROVED — nothing open above MINOR (a pre-existing MAJOR parked in Follow-ups with its reason counts as closed) · APPROVED-WITH-NITS — only MINOR or Questions remain · REJECTED — an open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with a reason; untouched pre-existing issues never reject · PARTIAL — required coverage or a report is missing or incomplete; the round stays open · BLOCKED — the brief cannot be reviewed: `BLOCKED: <the one question>`.>
+APPROVED | APPROVED-WITH-NITS | REJECTED | PARTIAL | BLOCKED — <one-line reason>
+```
+
+- A clean report still names the changed files and behaviors covered, the paths traced and where each claim held, the risk surfaces and the limitations; keep the depth-required trace even when clean, never a bare `APPROVED`, and never treat missing coverage as clean.
+
+Done when: the report is written with a Recommendation and every BLOCKER / MAJOR carries its scenario and repro.
+
+### 5. Closure proof
+
+- A fix to a security finding closes only when the repro or test its report entry names passes on the fixed tree (H2): the author runs it and records the result in the finding's closure proof; a green suite alone closes nothing.
+
+## Next phase
+
+- Return the verdict, the report path and the counts by severity to whoever ordered the review, in at most 12 lines.
+- Called alone (the user asked) → the report goes to the user, and each fix goes to the role that owns the code.

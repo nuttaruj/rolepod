@@ -55,6 +55,7 @@ test-static:
 	@python3 -m json.tool adapters/cursor/.cursor-plugin/marketplace.json >/dev/null && echo "  ✓ cursor marketplace.json"
 	@python3 -m json.tool adapters/cursor/hooks/hooks.json >/dev/null && echo "  ✓ cursor hooks.json"
 	@$(MAKE) -s test-render-clean
+	@bash tests/static/skill-tree-parity.sh
 	@$(MAKE) -s test-lean-surface
 	@bash tests/static/hook-agent-matching.sh
 	@bash tests/static/type-name-sets.sh
@@ -102,10 +103,10 @@ test-lean-surface:
 # we don't git-diff it; we instead check structural invariants directly.
 test-render-clean:
 	@bash build/render.sh --target=all >/dev/null
-	@if ! git diff --quiet -- .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/ 2>/dev/null; then \
+	@if ! git diff --quiet -- skills/ .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/ 2>/dev/null; then \
 		echo "  ✗ render-clean: committed marketplace tree drifted from build/render.sh output."; \
-		echo "    Run: make render && git add .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/ && commit."; \
-		git diff --stat -- .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/; \
+		echo "    Run: make render && git add skills/ .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/ && commit."; \
+		git diff --stat -- skills/ .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/; \
 		exit 1; \
 	fi
 	@for f in build/rendered/codex/AGENTS.md build/rendered/antigravity/AGENTS.md; do \
@@ -116,7 +117,7 @@ test-render-clean:
 	@[ -f .cursor-plugin/marketplace.json ] && [ -f plugins/rolepod-cursor/.cursor-plugin/plugin.json ] || { echo "  ✗ render-clean: committed Cursor marketplace tree missing"; exit 1; }
 	@[ -f plugins/rolepod-cursor/rules/always-on-core.mdc ] || { echo "  ✗ render-clean: cursor always-on-core.mdc missing"; exit 1; }
 	@[ ! -f plugins/rolepod/CLAUDE.md ] || { echo "  ✗ render-clean: Claude ships no entry doc — plugins/rolepod/CLAUDE.md should not exist"; exit 1; }
-	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ plugins/rolepod/ plugins/rolepod-codex/ plugins/rolepod-cursor/ 2>/dev/null || true); \
+	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ skills/ plugins/rolepod/ plugins/rolepod-codex/ plugins/rolepod-cursor/ 2>/dev/null || true); \
 	if [ -n "$$leak_files" ]; then \
 		echo "  ✗ render-clean: unresolved {{INCLUDE: ...}} placeholders in:"; \
 		echo "$$leak_files" | sed 's/^/      /'; \

@@ -8,7 +8,7 @@ cli-cursor	rules/always-on-core.mdc	6823
 cli-opencode	AGENTS.md	7085
 lead	agent-listing	1602
 lead	hooks/always-on-core.md	6044
-lead	session-path	71189
+lead	session-path	71253
 lead	session-start	6283
 lead	skill-listing	3612
 lead	skills/check-work/SKILL.md	5647
@@ -42,7 +42,7 @@ lead	skills/manage-context/SKILL.md	10375
 lead	skills/manage-context/examples/context-examples.md	3201
 lead	skills/manage-context/references/cli-fallbacks.md	2228
 lead	skills/manage-context/templates/handoff-brief.md	2259
-lead	skills/orchestrating-plans/SKILL.md	10225
+lead	skills/orchestrating-plans/SKILL.md	10289
 lead	skills/review-code/SKILL.md	11437
 lead	skills/review-code/examples/finding-examples.md	2458
 lead	skills/review-code/references/axes.md	1492
@@ -52,7 +52,8 @@ lead	skills/coordinating-parallel-tracks/SKILL.md	8780
 lead	skills/using-rolepod/SKILL.md	9015
 lead	skills/using-rolepod/examples/routing-transcripts.md	4316
 lead	skills/using-rolepod/references/fanout-claude.md	4525
-lead	skills/using-rolepod/references/model-tiers.md	8700
+lead	skills/using-rolepod/references/fanout-codex.md	2599
+lead	skills/using-rolepod/references/model-tiers.md	8870
 lead	skills/using-rolepod/references/plugins-and-mcp.md	952
 lead	skills/using-rolepod/references/scope-then-spawn.md	3542
 lead	skills/using-rolepod/references/session-mode.md	1300

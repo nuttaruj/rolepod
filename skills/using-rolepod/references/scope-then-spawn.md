@@ -1,0 +1,77 @@
+<!-- Load for any repo-wide task: audit, sweep, dead-code hunt, "find all X". -->
+
+# Scope-then-spawn
+
+Default for any task that touches the **whole repo** (audit, refactor sweep,
+dead-code hunt, security pass, dependency map, "find every usage of X").
+Stops Lead from fanning out parallel agents over hundreds of files when a
+structural query can narrow the list first.
+
+```
+1. Scope    →  list the files / symbols / processes actually in scope
+2. Narrow   →  filter to the suspicious / risky / changed subset
+3. Spawn    →  parallel agents ONLY on the narrowed list (or self-do)
+```
+
+When the harness can spawn subagents, the whole Scope + Narrow pass is itself
+a read-only sweep — hand it to ONE `rolepod-scout` (always-on Code search rule). The
+`rolepod-scout` returns a research report (conclusion → `file:line` pointers → gaps);
+the Lead then runs step 3 on the narrowed list. Do the Scope/Narrow yourself
+only when no subagent support exists.
+
+## Tool order
+
+| Step | With code-intel index | Without |
+|---|---|---|
+| Scope | query index for target concept → file / symbol list | `grep -rl <pattern>` + `find` |
+| Narrow | impact / callers query → blast radius | grep cross-reference + Read on hotspots |
+| Spawn | Parallel agents on narrowed list | Parallel agents on the grep-filtered list |
+
+Code-intel path: sub-second graph query, no per-file LLM read. Cuts token cost
+~90% on structural audits.
+Fallback path: `grep` + `find` are universal (`rg` only if installed). No index = no block. Lead does
+not nag the user to install anything.
+
+## When scope-then-spawn does NOT apply
+
+- Single-file change → direct edit, no scoping
+- Semantic-only audit (logic bugs, design smell, security reasoning) →
+  code-intel can't reason about meaning; spawn agents directly but cap the file
+  count and ask the user to narrow if >20
+- User already named the files → skip step 1
+
+## Anti-pattern
+
+Spawning 1 agent per file across 100+ files for "audit the whole repo"
+without a scoping pass. Burns tokens, drowns Lead in summaries, misses
+cross-file patterns a code-intel index would surface in one query.
+
+---
+
+# 2-strike convergence — the sweep that emerges mid-flight
+
+Scope-then-spawn above covers a sweep you can see coming. This covers the
+other shape: a fix → check → fix loop where each check reveals the next fix,
+and the sweep only becomes visible once you are inside it.
+
+The first 2 same-shaped fixes are discovery — the loop's runner (the path
+owner; the Lead only at R1 or without sub-agents) is learning the pattern,
+fixing inline is correct. The 3rd instance of the SAME shape (no new
+decision, just the learned fix applied again) is the convergence signal:
+**stop, don't fix it inline.**
+
+1. **Enumerate the remainder** — grep the pattern, or take the failing-test
+   list. You cannot batch what you have not counted.
+2. **The brief writes itself** — the 2 fixed instances ARE the examples:
+   pattern, before/after diff, verify command.
+3. **Dispatch the remainder as ONE batch** at the mechanical tier (cheap-class;
+   the class table in `references/model-tiers.md`).
+   Review the manifest, not each file.
+
+Fix #3 changed the approach → not converged; keep self-doing and re-test at
+the next repeat. Either way the check loop itself is delegable: "run X, report
+failures compactly" is mechanical-tier work even when the fixes are not.
+
+"Faster to just fix it myself" is true for THIS file, false for the sweep — by
+instance 3 the pattern is brief-ready, and every further inline fix pays
+top-tier price for zero new judgment.

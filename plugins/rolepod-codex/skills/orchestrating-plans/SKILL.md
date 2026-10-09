@@ -41,7 +41,7 @@ The plan's **Owner:** line wins:
 - A write mandate goes to the path's owning type, never a reviewer: `rolepod-qa` / `rolepod-reviewer` write tests and markdown only.
 - A plan naming an old role → system-architect: `rolepod-builder` with `domain: architecture`; content-strategist: `rolepod-builder` with `domain: writing`; another writer: `rolepod-builder`; universal-reviewer, security-engineer or adversarial-reviewer: `rolepod-reviewer` with that lens; qa-tester: `rolepod-qa`; scout: `rolepod-scout`.
 - `domain: writing` → the brief names the absolute path of `implement-plan/references/writing.md`; it runs on a cheap-class model, and so does a mechanical task (a rename, config, wiring, a render or pin update, a copied pattern; no new logic or test) off a high-risk path. A second rejected return → balanced.
-- A CLI without the named role → `using-rolepod` model tiers; none → a fresh default subagent given the role's text.
+- A CLI without the named role → `using-rolepod` model tiers; none → a fresh default subagent given the role's text, or with no role text its skill (`implement-plan` for a writer).
 - A `rolepod-reviewer` `lens: security` dispatch outside a review round binds to Standard / Full.
 - One fresh owner per task; a reused one carries Task N's naming into Task N+1.
 - A worktree holds tracked files only: a gitignored harness is missing there, so the brief says how the Command gets in, or the owner runs on main.

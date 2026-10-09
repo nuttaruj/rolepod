@@ -117,10 +117,8 @@ render_agents() {
 # fragment instead of restating it. A SKILL.md with no directive renders
 # byte-identical, so this is a safe no-op for skills that include nothing.
 
-# Optional 2nd arg: adapter name whose adapters/<name>/skills/ overlays the output.
 render_skills() {
   local skills_dst="$1"
-  local overlay_target="${2:-}"
   mkdir -p "$skills_dst"
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     local name; name="$(basename "$skill_dir")"
@@ -146,46 +144,49 @@ render_skills() {
     [ -f "$skill_dir/SKILL.md" ] && \
       render_template "$skill_dir/SKILL.md" "$skills_dst/$name/SKILL.md"
   done
-  # Per-CLI overlay: adapters/<target>/skills/ copies over the rendered tree, so
-  # CLI-only references (fan-out mechanics) ship in that CLI's bundle alone.
-  if [ -n "$overlay_target" ] && [ -d "$REPO_DIR/adapters/$overlay_target/skills" ]; then
-    cp -R "$REPO_DIR/adapters/$overlay_target/skills/." "$skills_dst/"
-  fi
 }
 
-# ─── Strip skill frontmatter to name + description (+ extra keep keys) ──────
-# Shared by the cursor + opencode targets. opencode documents only name +
-# description in SKILL.md, so rolepod's extra keys (tier / phase /
-# when_to_use / disable-model-invocation) are all stripped rather than
-# gambling on tolerance. Cursor also documents `disable-model-invocation`
-# (cursor.com/docs/context/skills, checked 2026-09-27), so the cursor call
-# passes it as an extra keep key and the field survives there.
+# ─── The one shared skill tree ──────────────────────────────────────────────
+# skills/ at the repo root is the single rendered tree every bundle copies
+# byte-identical (and a skills-only install copies as is). Every adapter's
+# skills/ overlay ships in the one tree; each CLI reads its own
+# `fanout-<cli>.md`. Runs once per render call, before any target.
 
-strip_skill_frontmatter() {
-  local target_dir="$1"; shift
-  python3 - "$target_dir" "$@" <<'PY'
-import re
-import sys
-from pathlib import Path
+render_shared_skills() {
+  local dst="$REPO_DIR/skills"
+  rm -rf "$dst"
+  render_skills "$dst"
+  local overlay
+  for overlay in "$REPO_DIR"/adapters/*/skills; do
+    [ -d "$overlay" ] && cp -R "$overlay/." "$dst/"
+  done
 
-target_dir = Path(sys.argv[1])
-keep = {"name", "description", *sys.argv[2:]}
-for skill in target_dir.glob("*/SKILL.md"):
-    text = skill.read_text()
-    if not text.startswith("---\n"):
-        continue
-    end = text.find("\n---\n", 4)
-    if end == -1:
-        continue
-    fm = text[4:end]
-    body = text[end + 5:]
-    kept_lines = []
-    for line in fm.split("\n"):
-        m = re.match(r"^([A-Za-z][A-Za-z0-9_-]*):\s", line)
-        if m and m.group(1) in keep:
-            kept_lines.append(line)
-    skill.write_text("---\n" + "\n".join(kept_lines) + "\n---\n" + body)
-PY
+  # Codex's own explicit-invoke mechanism: a skill whose core SKILL.md
+  # frontmatter carries `disable-model-invocation: true` gets an
+  # agents/openai.yaml beside it (learn.chatgpt.com/docs/build-skills) so
+  # Codex won't implicitly invoke it from a bare prompt — $skill still
+  # works. The frontmatter flag stays the single source; no hand-written
+  # copy lives in core/. Other CLIs ignore the file.
+  local skill_dir
+  for skill_dir in "$dst"/*/; do
+    local skill_md="$skill_dir/SKILL.md"
+    [ -f "$skill_md" ] || continue
+    if grep -q '^disable-model-invocation: true' "$skill_md"; then
+      mkdir -p "$skill_dir/agents"
+      cat > "$skill_dir/agents/openai.yaml" <<'EOF'
+policy:
+  allow_implicit_invocation: false
+EOF
+    fi
+  done
+}
+
+# Copy the shared tree into one bundle's skills path.
+copy_shared_skills() {
+  local dst="$1"
+  rm -rf "$dst"
+  mkdir -p "$dst"
+  cp -R "$REPO_DIR/skills/." "$dst/"
 }
 
 # ─── Render Claude target ───────────────────────────────────────────────────
@@ -234,7 +235,7 @@ render_claude() {
   render_agents "claude" "$plugin_dst/agents"
 
   # Skills as a real directory tree (rendered from core/skills/).
-  render_skills "$plugin_dst/skills" claude
+  copy_shared_skills "$plugin_dst/skills"
 
   # Hooks: hooks/hooks.json config (canonical plugin-root form) + 6 core
   # scripts + lib/ helpers.
@@ -356,26 +357,7 @@ render_codex() {
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
   # Skills as a real directory tree (rendered from core/skills/).
-  render_skills "$plugin_dst/skills" codex
-
-  # Codex's own explicit-invoke mechanism: a skill whose core SKILL.md
-  # frontmatter carries `disable-model-invocation: true` gets an
-  # agents/openai.yaml beside it (learn.chatgpt.com/docs/build-skills) so
-  # Codex won't implicitly invoke it from a bare prompt — $skill still
-  # works. The frontmatter flag stays the single source; no hand-written
-  # copy lives in core/.
-  local skill_dir
-  for skill_dir in "$plugin_dst/skills"/*/; do
-    local skill_md="$skill_dir/SKILL.md"
-    [ -f "$skill_md" ] || continue
-    if grep -q '^disable-model-invocation: true' "$skill_md"; then
-      mkdir -p "$skill_dir/agents"
-      cat > "$skill_dir/agents/openai.yaml" <<'EOF'
-policy:
-  allow_implicit_invocation: false
-EOF
-    fi
-  done
+  copy_shared_skills "$plugin_dst/skills"
 }
 
 # ─── Render Cursor target ───────────────────────────────────────────────────
@@ -395,7 +377,7 @@ EOF
 #   .cursor-plugin/marketplace.json                  (marketplace catalog)
 #   plugins/rolepod-cursor/.cursor-plugin/plugin.json
 #   plugins/rolepod-cursor/rules/always-on-core.mdc  (fully resolved)
-#   plugins/rolepod-cursor/skills/<name>/SKILL.md    (stripped to name+description)
+#   plugins/rolepod-cursor/skills/<name>/SKILL.md    (copied from the shared skills/ tree)
 #   plugins/rolepod-cursor/agents/<name>.md          (4 files, minimal frontmatter)
 #   plugins/rolepod-cursor/hooks/hooks.json
 #   plugins/rolepod-cursor/scripts/*.sh              (6 hook scripts + scripts/shared/ cores)
@@ -432,14 +414,9 @@ render_cursor() {
   render_template "$pass1" "$plugin_dst/rules/always-on-core.mdc"
   rm -f "$pass1"
 
-  # Skills — render the same source as Claude, then post-process each
-  # frontmatter to keep only the fields Cursor documents: name + description,
-  # plus disable-model-invocation (cursor.com/docs/context/skills, checked
-  # 2026-09-27) — tier / phase / when_to_use are still stripped. Keeping
-  # disable-model-invocation means a command skill (e.g. deepen-codebase)
-  # stays explicit-invoke only on Cursor, same as on Claude.
-  render_skills "$plugin_dst/skills"
-  strip_skill_frontmatter "$plugin_dst/skills" disable-model-invocation
+  # Skills — the same shared tree as every other bundle, frontmatter intact
+  # (disable-model-invocation keeps a command skill explicit-invoke on Cursor).
+  copy_shared_skills "$plugin_dst/skills"
 
   # Agents — minimal name+description frontmatter (see merge-agent.py cursor target).
   render_agents "cursor" "$plugin_dst/agents"
@@ -519,7 +496,7 @@ render_antigravity() {
   fi
 
   # Skills as a real directory tree (rendered from core/skills/).
-  render_skills "$plugin_dst/skills"
+  copy_shared_skills "$plugin_dst/skills"
 
   # Agents — md + YAML frontmatter.
   render_agents "antigravity" "$plugin_dst/agents"
@@ -569,7 +546,7 @@ render_antigravity() {
 # Gitignored (build/rendered/opencode/ — read by install.sh only):
 #   AGENTS.md                  (always-on core → managed block)
 #   agents/<name>.md           (4 agents, description + mode: subagent)
-#   skills/<name>/...          (frontmatter stripped to name + description)
+#   skills/<name>/...          (the shared skills/ tree, frontmatter intact)
 #   plugin/rolepod.js          (plugin shim)
 #   opencode.json              (version stamp for install verification)
 
@@ -591,10 +568,9 @@ render_opencode() {
     echo "render: missing $adapter_dir/opencode.json" >&2; exit 1
   fi
 
-  # Skills — same source as Claude; frontmatter stripped to the two fields
-  # opencode documents (shared helper with the cursor target).
-  render_skills "$out_dir/skills"
-  strip_skill_frontmatter "$out_dir/skills"
+  # Skills — the same shared tree as every other bundle; opencode ignores
+  # frontmatter keys it does not know.
+  copy_shared_skills "$out_dir/skills"
 
   # Agents — description + mode: subagent (filename = agent id).
   render_agents "opencode" "$out_dir/agents"
@@ -627,6 +603,8 @@ render_opencode() {
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1
   fi
 }
+
+render_shared_skills
 
 case "$TARGET" in
   claude)      render_claude ;;
