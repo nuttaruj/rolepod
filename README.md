@@ -55,6 +55,29 @@ Rolepod composes with Claude Code's **Ultracode** mode out of the box — no set
 
 Pick your CLI. Rolepod installs **only itself** — agents, skills, hooks, manifests. No third-party tools are installed for you.
 
+### Skills only (any CLI)
+
+Want only the skills? Copy the whole `skills/` folder of this repo into the skills directory of your CLI. Any CLI that reads `SKILL.md` folders can use it:
+
+| CLI | Skills directory |
+|---|---|
+| Claude Code | `~/.claude/skills/` |
+| Codex CLI | `~/.agents/skills/` |
+| Cursor | `~/.cursor/skills/` |
+| opencode | `~/.config/opencode/skills/` |
+| Antigravity (agy) | `~/.gemini/config/skills/` |
+
+```bash
+git clone https://github.com/nuttaruj/rolepod.git
+cp -R rolepod/skills/. <skills-directory>/
+```
+
+Copy the whole folder, not single skills: skills point at each other's scripts by relative path, so a lone skill can break.
+
+- **You get:** every skill, and every CLI gets the same set.
+- **You do not get:** hooks or workflow gates, rolepod agents (a skill that asks for a role falls back to a default sub-agent given that role's skill), the always-on core, and useful `rolepod-stats` data. For those, install the plugin above or run `bootstrap.sh`.
+- **Names:** skills are called bare — `/write-spec`, or `$write-spec` on Codex. `security-review` has the same name as Claude Code's built-in `/security-review`, so the two collide on Claude Code.
+
 ### Claude Code
 
 ```bash
