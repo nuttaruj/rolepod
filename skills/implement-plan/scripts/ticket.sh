@@ -1630,8 +1630,8 @@ EOF
           fi
         fi
         printf '%s\n' "$tline"
-        # The cell lives in plan-lint.sh --review-set (one home); a failing
-        # call prints a pointer line and never fails log.
+        # The cell lives in plan-lint.sh --review-set (one home; an R3 / R4 set adds the
+        # pool-on line when the pool is on); a failing call prints a pointer line and never fails log.
         ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --review-set --tier "$tt_top" 2>/dev/null \
           || echo "Review: unknown — run plan-lint.sh --review-set --tier $tt_top"
         echo "Track end: a track with two or more code tasks → its last code task's owner runs \`convening-code-review\` with the \`Review:\` line \`ticket.sh log\` prints, on the track diff, and fixes each BLOCKER / MAJOR (owner gone → a fresh owner of its role; an owner that cannot dispatch returns the diff unreviewed and the Lead runs \`convening-code-review\`); the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its owner ordered its own review before returning, and the track takes no track-end review."

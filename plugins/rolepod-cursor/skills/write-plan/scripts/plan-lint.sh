@@ -34,7 +34,8 @@
 #   match with or without `**bold**` (real plans use both dialects).
 #
 # Usage: scripts/plan-lint.sh --review-set --tier <R1|R2|R3|R4> [--mode <m>] [--match <perf,ui,arch>]
-#   Prints one line, `Review: <cell>` — the same cell --brief prints (one function).
+#   Prints `Review: <cell>` — the same cell --brief prints (one function); an R3 / R4
+#   set adds the pool-on external line under it when the pool is on.
 #   Mode: --mode (a value outside lite / standard / full → lite), else the --brief
 #   resolver, else lite. A missing or unknown --tier or --match token → one usage
 #   line on stderr, exit 2, empty stdout.
@@ -467,6 +468,17 @@ function rsetcell(mode, tier, sel,   lens, spec, n, i, k, ids, out, sk) {
   if (tier == "R2") return (out == "" ? lens : lens " + " out)
   return lens " + " (out == "" ? spec : out)
 }
+# The pool-on external line (one home; --brief and --review-set print it): only for an
+# R3 / R4 tier, only when the config reader (RP_BRIEF_POOLRD) prints enabled=on; else "".
+function poolline(tier,   pcmd, pl, on) {
+  if (ENVIRON["RP_BRIEF_POOLRD"] == "" || (tier != "R3" && tier != "R4")) return ""
+  on = 0
+  pcmd = "python3 -I \"$RP_BRIEF_POOLRD\" pool 2>/dev/null"
+  while ((pcmd | getline pl) > 0) if (pl == "enabled=on") { on = 1; break }
+  close(pcmd)
+  if (!on) return ""
+  return "Pool on → each lens runs external instead: `bash <cross-family skill folder>/scripts/cross-family.sh --kind review --lens spec --brief <this brief> --attach <diff> --detach`, the same with `--lens standards`, then `--collect <job> --timeout 540` for each in the foreground (exit 6 = still running: run it again); a lens whose run fails, comes back weak or is refused → `rolepod-reviewer` with that lens, same round."
+}
 '
 # The skills folder, resolved from where this script lives (repo core/skills,
 # a .worktrees checkout or the installed plugin copy); rsetcell prints paths under it.
@@ -516,6 +528,15 @@ function tagspan(lbl,    hay, span, rest, m, follow, chained) {
 function has_tasktag(lbl) { return tagspan(lbl) != "" }
 '
 
+# Config reader (one resolver for --brief, --review-set and the pool line): beside this
+# script when installed, else under the repo's hooks/lib. Sets BRIEF_READER.
+rp_resolve_reader() {
+  local here
+  here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  BRIEF_READER="$here/rolepod_config.py"
+  [ -f "$BRIEF_READER" ] || BRIEF_READER="$here/../../../../hooks/lib/rolepod_config.py"
+}
+
 # Workflow mode: env, then the session profile (native session id), then
 # workflow.mode from config, then lite. Readers sit beside this script when
 # installed, else under the repo's hooks/lib. Sets BRIEF_WMODE, BRIEF_WSRC and
@@ -538,9 +559,7 @@ rp_resolve_wmode() {
       BRIEF_WMODE="$ROLEPOD_SESSION_MODE"; BRIEF_WSRC="$ROLEPOD_SESSION_SOURCE"
     fi
   fi
-  # Config reader, resolved once: beside this script when installed, else under the repo's hooks/lib.
-  BRIEF_READER="${BRIEF_HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/rolepod_config.py"
-  [ -f "$BRIEF_READER" ] || BRIEF_READER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../../hooks/lib/rolepod_config.py"
+  rp_resolve_reader
   if [[ ! "$BRIEF_WMODE" =~ ^(lite|standard|full)$ ]]; then
     BRIEF_CFG="$(ROLEPOD_PROJECT_ROOT="${ROLEPOD_PROJECT_ROOT:-$BRIEF_ROOT}" python3 -I "$BRIEF_READER" mode 2>/dev/null || true)"
     BRIEF_WMODE="$(printf '%s\n' "$BRIEF_CFG" | awk -F= '$1 == "mode" {print $2}')"
@@ -577,7 +596,16 @@ if [ "${1:-}" = "--review-set" ]; then
       rp_resolve_wmode; RS_MODE="$BRIEF_WMODE"
     fi
   fi
-  awk -v mode="$RS_MODE" -v tier="$RS_TIER" -v sel="$RS_MATCH" "$RSET_AWK"'BEGIN { print "Review: " rsetcell(mode, tier, sel) }'
+  # Pool line (R3 / R4 only): read here whatever ROLEPOD_BRIEF_NOREC says; a missing reader = off.
+  RP_BRIEF_POOLRD=""
+  if [ "$RS_TIER" = R3 ] || [ "$RS_TIER" = R4 ]; then
+    rp_resolve_reader
+    [ -f "$BRIEF_READER" ] && RP_BRIEF_POOLRD="$BRIEF_READER"
+    ROLEPOD_PROJECT_ROOT="${ROLEPOD_PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+    export ROLEPOD_PROJECT_ROOT
+  fi
+  export RP_BRIEF_POOLRD
+  awk -v mode="$RS_MODE" -v tier="$RS_TIER" -v sel="$RS_MATCH" "$RSET_AWK"'BEGIN { print "Review: " rsetcell(mode, tier, sel); pl = poolline(tier); if (pl != "") print pl }'
   exit $?
 fi
 
@@ -1271,14 +1299,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     if (Of != "" && Of !~ /^</) { print "## On fail"; print Of }
     printf "Canonical task receipt: %s/docs/rolepod/tasks/%s/task-%02d.md\n", baseroot, tbase, want + 0
     # C2: pool on and an R3 / R4 task → each lens runs external; printed under the lens line, never on R2 / R1.
-    c2 = ""
-    xpool = 0
-    if (ENVIRON["RP_BRIEF_POOLRD"] != "" && (tier == "R3" || tier == "R4")) {
-      pcmd = "python3 -I \"$RP_BRIEF_POOLRD\" pool 2>/dev/null"
-      while ((pcmd | getline pl) > 0) if (pl == "enabled=on") { xpool = 1; break }
-      close(pcmd)
-    }
-    if (xpool == 1 && (tier == "R3" || tier == "R4")) c2 = "Pool on → each lens runs external instead: `bash <cross-family skill folder>/scripts/cross-family.sh --kind review --lens spec --brief <this brief> --attach <diff> --detach`, the same with `--lens standards`, then `--collect <job> --timeout 540` for each in the foreground (exit 6 = still running: run it again); a lens whose run fails, comes back weak or is refused → `rolepod-reviewer` with that lens, same round."
+    c2 = poolline(tier)
     print "## Reviewers"
     # One cell of the review set (rsetcell, C61) for the only code task
     # of its track; any other R2 / R3 / R4 task is covered by its track-end review.

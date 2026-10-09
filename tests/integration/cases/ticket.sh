@@ -1864,10 +1864,13 @@ else
   echo "  ✗ tracks: printed --sha expr [$TK2_SHAEXPR] gave [$TK2_EVAL], want worktree HEAD $TK2_SHA"; fail=$((fail+1))
 fi
 LINT_T="$REPO_DIR/core/skills/write-plan/scripts/plan-lint.sh"
-TK2_LOG=$(bash "$TICKET" log "$TKP" 2 --sha "$TK2_SHA" --note "beta done" 2>&1)
+# a HOME without a pool config keeps the Review: comparisons independent of the runner's real pool
+TK_HXP="$TMP/tk-home-xpool"; TK_HNO="$TMP/tk-home-noxpool"; mkdir -p "$TK_HXP/.rolepod" "$TK_HNO/.rolepod"
+printf '{"pool":{"reviewer":{"review":"codex"}}}\n' > "$TK_HXP/.rolepod/config.json"
+TK2_LOG=$(HOME="$TK_HNO" bash "$TICKET" log "$TKP" 2 --sha "$TK2_SHA" --note "beta done" 2>&1)
 # the Review: line follows the session mode (lite = two lenses, standard adds the specialists)
-TK2_LITE=$(ROLEPOD_SESSION_MODE=lite bash "$TICKET" log "$TKP" 2 --sha "$TK2_SHA" --note "beta done" 2>&1 | grep '^Review: ')
-TK2_STD=$(ROLEPOD_SESSION_MODE=standard bash "$TICKET" log "$TKP" 2 --sha "$TK2_SHA" --note "beta done" 2>&1 | grep '^Review: ')
+TK2_LITE=$(HOME="$TK_HNO" ROLEPOD_SESSION_MODE=lite bash "$TICKET" log "$TKP" 2 --sha "$TK2_SHA" --note "beta done" 2>&1 | grep '^Review: ')
+TK2_STD=$(HOME="$TK_HNO" ROLEPOD_SESSION_MODE=standard bash "$TICKET" log "$TKP" 2 --sha "$TK2_SHA" --note "beta done" 2>&1 | grep '^Review: ')
 if [ "$(printf '%s\n' "$TK2_LITE" | grep -o 'rolepod-reviewer' | wc -l | tr -d ' ')" = "2" ] \
   && ! printf '%s\n' "$TK2_LITE" | grep -qE 'lens: perf|lens: ui|lens: arch' \
   && printf '%s\n' "$TK2_STD" | grep -q 'lens: perf' \
@@ -1884,17 +1887,26 @@ import sys
 t = open(sys.argv[1]).read().replace("`src/beta.py`", "`src/auth/beta.py`", 1)
 open(sys.argv[2], "w").write(t)
 PY
-TK4_STD=$(ROLEPOD_SESSION_MODE=standard bash "$TICKET" log "$TKP4" 2 --sha "$TK2_SHA" --note "beta done" 2>&1 | grep '^Review: ')
-TK4_WANT=$(ROLEPOD_SESSION_MODE=standard bash "$LINT_T" --review-set --tier R4)
-TK3_WANT=$(ROLEPOD_SESSION_MODE=standard bash "$LINT_T" --review-set --tier R3)
+TK4_STD=$(HOME="$TK_HNO" ROLEPOD_SESSION_MODE=standard bash "$TICKET" log "$TKP4" 2 --sha "$TK2_SHA" --note "beta done" 2>&1 | grep '^Review: ')
+TK4_WANT=$(HOME="$TK_HNO" ROLEPOD_SESSION_MODE=standard bash "$LINT_T" --review-set --tier R4)
+TK3_WANT=$(HOME="$TK_HNO" ROLEPOD_SESSION_MODE=standard bash "$LINT_T" --review-set --tier R3)
 if [ -n "$TK4_STD" ] && [ "$TK4_STD" = "$TK4_WANT" ] && [ "$TK4_STD" != "$TK3_WANT" ] && printf '%s\n' "$TK4_STD" | grep -qF 'lens: security'; then
   echo "  ✓ tracks: a track holding an R4 task prints the R4 Review: cell (security lens), from the track's highest code-task tier"
 else
   echo "  ✗ tracks: R4 track Review: line wrong: got=[$TK4_STD] want=[$TK4_WANT]"; fail=$((fail+1))
 fi
+# pool on → the track-end output carries the pool line after Review:; pool off → none
+TK_POOL_ON=$(HOME="$TK_HXP" ROLEPOD_SESSION_MODE=lite bash "$TICKET" log "$TKP" 2 --sha "$TK2_SHA" --note "beta done" 2>&1 | grep -A1 '^Review: ')
+TK_POOL_OFF=$(HOME="$TK_HNO" ROLEPOD_SESSION_MODE=lite bash "$TICKET" log "$TKP" 2 --sha "$TK2_SHA" --note "beta done" 2>&1 | grep -A1 '^Review: ')
+if printf "%s\n" "$TK_POOL_ON" | sed -n "2p" | grep -q "^Pool on → each lens runs external instead" \
+  && printf '%s\n' "$TK_POOL_OFF" | sed -n '2p' | grep -q '^Track end:'; then
+  echo "  ✓ tracks: the track-end output carries the pool-on external line after Review: with pool on, none with pool off"
+else
+  echo "  ✗ tracks: track-end pool line wrong: on=[$TK_POOL_ON] off=[$TK_POOL_OFF]"; fail=$((fail+1))
+fi
 TK_DIFF="$TKR_REAL/.rolepod/evidence/review/trk-demo-A.diff"
 if printf '%s\n' "$TK2_LOG" | grep -qF "track A done — review: main...$TK2_SHA" \
-  && [ "$(printf '%s\n' "$TK2_LOG" | grep -A1 -F 'track A done — review:' | sed -n '2p')" = "$(bash "$LINT_T" --review-set --tier R3)" ] \
+  && [ "$(printf '%s\n' "$TK2_LOG" | grep -A1 -F 'track A done — review:' | sed -n '2p')" = "$(HOME="$TK_HNO" bash "$LINT_T" --review-set --tier R3)" ] \
   && [ "$(printf '%s\n' "$TK2_LOG" | grep -A2 -F 'track A done — review:' | sed -n '3p' | grep -c '^Track end:.*convening-code-review')" = "1" ] \
   && ! printf '%s\n' "$TK2_LOG" | grep -q '^review:' \
   && ! printf '%s\n' "$TK2_LOG" | grep -q '^ready now' \

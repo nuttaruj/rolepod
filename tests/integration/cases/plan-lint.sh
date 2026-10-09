@@ -1748,6 +1748,41 @@ else
   echo "  ✗ --brief external lens line wrong"; fail=$((fail+1))
 fi
 
+# (3e) --review-set shares the sentence: pool on + R3/R4 → the line after the set line (also with
+# ROLEPOD_BRIEF_NOREC=1, as ticket.sh log calls it); R1 / R2, pool off, no reader config → byte-identical.
+rsx() { ( cd "$TMP" && HOME="$1" ROLEPOD_PROJECT_ROOT="$TMP" ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --review-set "${@:2}" 2>/dev/null ); }
+rsx_ok=1
+for m in lite standard full; do
+  for t in R3 R4; do
+    off=$(rsx "$HOME_NOXP" --tier $t --mode $m); on=$(rsx "$HOME_XP" --tier $t --mode $m)
+    [ "$on" = "$off"$'\n'"$C2_TXT" ] || { rsx_ok=0; echo "  . pool on $m $t: on=[$on]"; }
+    [ "$(printf '%s\n' "$off" | grep -c .)" -eq 1 ] || { rsx_ok=0; echo "  . pool off $m $t: extra line"; }
+  done
+  for t in R1 R2; do
+    [ "$(rsx "$HOME_XP" --tier $t --mode $m)" = "$(rsx "$HOME_NOXP" --tier $t --mode $m)" ] || { rsx_ok=0; echo "  . pool on $m $t differs"; }
+    rsx "$HOME_XP" --tier $t --mode $m | grep -qF 'Pool on' && { rsx_ok=0; echo "  . pool on $m $t: line printed"; }
+  done
+done
+# Fail closed: a copy of the script with no reader, or a reader that exits non-zero, prints garbage
+# or prints nothing → byte-identical to the pool-off output.
+FC="$TMP/fc-lint"; mkdir -p "$FC/a/b/c"
+cp "$LINT" "$FC/a/b/c/plan-lint.sh"
+rsfc() { ( cd "$TMP" && HOME="$HOME_XP" ROLEPOD_PROJECT_ROOT="$TMP" ROLEPOD_BRIEF_NOREC=1 bash "$FC/a/b/c/plan-lint.sh" --review-set --tier R4 --mode lite 2>/dev/null ); }
+rs_off=$(rsx "$HOME_NOXP" --tier R4 --mode lite)
+[ ! -e "$TMP/hooks/lib/rolepod_config.py" ] || { rsx_ok=0; echo "  . fail-closed fixture: fallback reader exists"; }
+[ "$(rsfc)" = "$rs_off" ] || { rsx_ok=0; echo "  . missing reader: differs from pool-off"; }
+for fake in 'import sys; sys.exit(3)' 'print("enabled=on garbage"); print("%%%")' 'pass'; do
+  printf '%s\n' "$fake" > "$FC/a/b/c/rolepod_config.py"
+  [ "$(rsfc)" = "$rs_off" ] || { rsx_ok=0; echo "  . reader [$fake]: differs from pool-off"; }
+done
+printf '%s\n' 'import sys; print("enabled=on") if sys.argv[1:] == ["pool"] else None' > "$FC/a/b/c/rolepod_config.py"
+[ "$(rsfc)" = "$rs_off"$'\n'"$C2_TXT" ] || { rsx_ok=0; echo "  . fake on-reader control: line missing"; }
+if [ "$rsx_ok" = 1 ]; then
+  echo "  ✓ --review-set prints the pool-on external line for R3/R4 only with pool on; R1/R2, pool off and a missing / failing / garbage / silent reader are unchanged"
+else
+  echo "  ✗ --review-set pool line wrong"; fail=$((fail+1))
+fi
+
 # (5) --brief 9 on a 3-task plan → exit 2, one stderr line, empty stdout.
 RC9=0
 OUT9=$(bash "$LINT" --brief 9 "$TMP/brief-plan.md" 2>"$TMP/brief9.err") || RC9=$?
@@ -4113,7 +4148,7 @@ fi
 RS_LENS='`rolepod-reviewer` `lens: spec` + `rolepod-reviewer` `lens: standards`'
 RS_SPEC='each matched specialist (`rolepod-reviewer` `lens: perf` · `lens: ui` · `lens: arch`, when its row matches)'
 RS_SK="$(cd "$(dirname "$LINT")/../.." && pwd)"
-rs() { bash "$LINT" --review-set "$@" 2>/dev/null; }
+rs() { HOME="$HOME_NOXP" bash "$LINT" --review-set "$@" 2>/dev/null; }
 rs_ok=1
 for m in lite standard full; do
   [ "$(rs --tier R1 --mode $m)" = 'Review: `none`' ] || { rs_ok=0; echo "  . $m R1"; }
