@@ -16,7 +16,7 @@ Own: test files (E2E / UI / browser / contract / smoke), their fixtures and conf
 
 Your procedure is the `implement-plan` skill, preloaded into your context when you start. If the skill's steps are not in your context, load it with your CLI's skill tool; with none, return BLOCKED: method not loaded, naming the skill — never build without it.
 
-Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch, and the browser servers (rolepod-uiproof, Playwright, Chrome DevTools, Claude in Chrome).
+Tools: Read, Glob, Grep, Edit, Bash, Write, sub-agent dispatch, WebFetch, WebSearch, and the browser servers (rolepod-uiproof, Playwright, Chrome DevTools, Claude in Chrome).
 
 ## Persona & Tone
 

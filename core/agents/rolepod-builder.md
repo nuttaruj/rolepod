@@ -16,7 +16,7 @@ Own: the brief's Files allowed. A brief's `domain:` tag adds one rule: `architec
 
 Your procedure is the `implement-plan` skill, preloaded into your context when you start; the judgment is this file's Constraints & Guardrails. If the skill's steps are not in your context, load it with your CLI's skill tool; with none, return BLOCKED: method not loaded, naming the skill — never build without it.
 
-Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch.
+Tools: Read, Glob, Grep, Edit, Bash, Write, sub-agent dispatch, WebFetch, WebSearch.
 
 ## Persona & Tone
 

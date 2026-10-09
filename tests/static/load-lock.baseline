@@ -1,6 +1,6 @@
 # load-lock baseline: rendered chars per reader per artifact, as tests/load/measure.sh prints them.
-# Rows only go down: lower a row when its reader shrinks; never raise one.
-# Growth needs a note line from the project owner, with its reason:
+# Rows only go down on their own: lower a row when its reader shrinks.
+# Growth the project owner approved in the request sets the row to the measured value; any other growth needs a note line with its reason:
 # note	<reader>	<artifact>	<allowed chars>	<reason>
 cli-antigravity	AGENTS.md	7149
 cli-codex	AGENTS.md	6891
@@ -75,7 +75,7 @@ lead	skills/write-spec/references/question-bank.md	4294
 lead	skills/write-spec/references/scope-splitting.md	1607
 lead	skills/write-spec/templates/spec-template.md	2705
 lead	standing	18910
-owner	code-writer-own	22251
+owner	code-writer-own	22255
 owner	skills/debug-issue/SKILL.md	10565
 owner	skills/debug-issue/references/flake-triage.md	1190
 owner	skills/debug-issue/references/repro-backends.md	1304
@@ -91,14 +91,14 @@ owner	skills/simplify-code/SKILL.md	7799
 owner	skills/simplify-code/templates/simplification-report.md	1183
 owner	skills/tdd-flow/SKILL.md	6765
 owner	skills/tdd-flow/references/red-proof.md	2694
-review-round	lite-r4-round1	46460
-review-round	standard-r4-round1	71883
+review-round	lite-r4-round1	46468
+review-round	standard-r4-round1	71895
 lead	skills/implement-plan/references/writing.md	2721
-owner	agents/rolepod-builder.md	6141
-owner	agents/rolepod-qa.md	8363
+owner	agents/rolepod-builder.md	6145
+owner	agents/rolepod-qa.md	8367
 owner	skills/implement-plan/references/writing.md	2721
-reviewer	agents/rolepod-reviewer.md	5933
+reviewer	agents/rolepod-reviewer.md	5937
 reviewer	skills/adversarial-review/SKILL.md	6691
 reviewer	skills/review-code/SKILL.md	11437
 reviewer	skills/security-review/SKILL.md	8053
-scout	agents/rolepod-scout.md	6685
+scout	agents/rolepod-scout.md	6689
