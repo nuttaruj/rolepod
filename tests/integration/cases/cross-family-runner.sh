@@ -61,8 +61,10 @@ _argbud=\$(printf '%s' "\$*" | grep -o 'Time budget: about [0-9]* minute' | grep
 _att=\$(printf '%s\n' "\$_raw" | sed -n 's/.*--- attached: \([^ ]*\) .*/\1/p' | head -1)
 _rawflat=\$(printf '%s' "\$_raw" | tr '\n' ' ')
 case "\$_in" in *"code reviewer"*) _in=review ;; *debugging*) _in=consult ;; *critic*) _in=critique ;; *) _in=none ;; esac
+_lk=0; while ! mkdir "$FIX/log.lock" 2>/dev/null; do _lk=\$((_lk+1)); [ \$_lk -ge 500 ] && break; sleep 0.01; done   # --all runs stubs concurrently: serialize the multi-write() appends; lock covers only the two appends (never the sleeps below); 500 tries (~5-9 s) on a stale lock, then append anyway
 printf '%s | %s | BRAIN=%s | STDIN=%s | BUDGET=%s | ATT=%s | RAW=%s\n' "$2" "\$(printf '%s' "\$*" | tr '\n' ' ')" "\${ROLEPOD_BRAIN_SILENT:-unset}" "\$_in" "\${_bud:-\$_argbud}" "\${_att:-none}" "\$_rawflat" >> "$LOG"
 [ "$2" = opencode ] && printf '%s\n' "\${OPENCODE_CONFIG_CONTENT-<unset>}" >> "$FIX/oc-env.log"
+rmdir "$FIX/log.lock"
 if [ "\$1" = "models" ]; then printf '%s\n' "\${CURSOR_MODELS_OUT:-auto - Auto (current, default)}"; exit 0; fi
 mode=\$(eval "printf '%s' \"\\\${STUB_$2:-ok}\"")
 [ -n "\${XFAM_STAMP:-}" ] && { echo "S $2" >> "\$XFAM_STAMP"; sleep 3; echo "E $2" >> "\$XFAM_STAMP"; }   # overlap probe: start/end order, no clock
