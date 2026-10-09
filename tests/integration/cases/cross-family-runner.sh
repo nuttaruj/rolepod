@@ -832,7 +832,7 @@ restorepool
 fi
 # ── every shipped tree carries the reader beside the runner; a tree without it is OFF, never on ──
 if section "cross-family: rendered targets ship the pool reader (and run OFF without it)"; then
-for _t in cursor antigravity opencode; do bash "$REPO_DIR/build/render.sh" "$_t" >/dev/null 2>&1 || true; done
+for _t in cursor antigravity opencode; do bash "$REPO_DIR/build/render.sh" --target="$_t" >/dev/null 2>&1 || true; done
 setpool 'agy\ncodex\n'
 for _d in "$REPO_DIR/plugins/rolepod/skills/cross-family/scripts" "$REPO_DIR/plugins/rolepod-codex/skills/cross-family/scripts" \
           "$REPO_DIR/plugins/rolepod-cursor/skills/cross-family/scripts" "$REPO_DIR/build/rendered/antigravity/plugin/skills/cross-family/scripts" \
