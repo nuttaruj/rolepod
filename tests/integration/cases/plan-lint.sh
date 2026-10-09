@@ -4545,6 +4545,11 @@ if grep -qF -- '- A path inside a worktree, in a reply or a link → write it fr
   echo "  ✓ orchestrating-plans Guardrails carry the worktree-path-from-base-root rule"
 else echo "  ✗ orchestrating-plans Guardrails lack the worktree-path-from-base-root rule"; fail=$((fail+1)); fi
 
+# A worktree from ticket.sh start gets the gitignored files the repo-root .worktreeinclude lists (spec worktree-include-2026-10-09).
+if grep -qF -- '- A worktree from `ticket.sh start` gets the gitignored files the repo-root `.worktreeinclude` lists; any other gitignored file the Command needs → the brief says how it gets in, or the owner runs on main.' "$REPO_DIR/core/skills/orchestrating-plans/SKILL.md"; then
+  echo "  ✓ orchestrating-plans step 2 says a ticket.sh start worktree gets the .worktreeinclude files"
+else echo "  ✗ orchestrating-plans step 2 lacks the .worktreeinclude sentence"; fail=$((fail+1)); fi
+
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
   exit 0

@@ -44,7 +44,7 @@ The plan's **Owner:** line wins:
 - A CLI without the named role → `using-rolepod` model tiers; none → a fresh default subagent given the role's text, or with no role text its skill (`implement-plan` for a writer).
 - A `rolepod-reviewer` `lens: security` dispatch outside a review round binds to Standard / Full.
 - One fresh owner per task; a reused one carries Task N's naming into Task N+1.
-- A worktree holds tracked files only: a gitignored harness is missing there, so the brief says how the Command gets in, or the owner runs on main.
+- A worktree from `ticket.sh start` gets the gitignored files the repo-root `.worktreeinclude` lists; any other gitignored file the Command needs → the brief says how it gets in, or the owner runs on main.
 - Dispatched → `ticket.sh log <plan> <N> --start` per task.
 
 Done when: every ready task is dispatched, independent ones in ONE message.

@@ -2008,6 +2008,158 @@ else
   echo "  ✗ .worktrees/ ignore after start: rc2=$LKA2_RC exclude=[$(tr '\n' '|' < "$LKA_EXCL")] status=[$(git -C "$LKA" status --porcelain | tr '\n' '|')]"; fail=$((fail+1))
 fi
 
+# ── .worktreeinclude: a NEW worktree gets the gitignored files the base's repo-root .worktreeinclude lists
+# (spec worktree-include-2026-10-09). Fixture repos live under a path with spaces; every negative assertion
+# also needs a positive (a count / skip line) so it cannot pass on a start that copies nothing.
+V_ENV="wti-env-9a41"; V_SA="wti-sec-a-58c2"; V_SB="wti-sec-b-1d07"; V_MY="wti-my-3e66"; V_PRIV="wti-priv-72bb"
+WTI_OUT_DIR="$TMP/wti outside"; mkdir -p "$WTI_OUT_DIR/secdir"
+printf 'OUTSIDE-TEXT-b7c1\n' > "$WTI_OUT_DIR/o.env"
+printf 'SENTINEL-LINK-TEXT-e5d2\n' > "$WTI_OUT_DIR/sentinel.txt"
+printf 'DEST-SENTINEL-4f90\n' > "$WTI_OUT_DIR/dest-sentinel.txt"
+wti_chk() { # $1 = message, $2 = 0 when it holds, $3 = detail printed on failure
+  if [ "$2" -eq 0 ]; then echo "  ✓ $1"; else echo "  ✗ $1 — $3"; fail=$((fail+1)); fi
+}
+wti_snap() { ( cd "$WTI_OUT_DIR" && find . | sort && find . -type f -exec cksum {} + | sort ); }
+wti_set() { ( cd "$1" && find . -type f ! -path './.git' ! -path './.git/*' | sort ); }
+wti_mode() { ls -ld "$1" | cut -c1-10; }
+mk_wti() { # $1 = dir — a per-task plan, ignore rules, ignored + untracked + tracked files, a .worktreeinclude
+  mkrepo "$1"
+  cp "$FR/plan.md" "$1/plan.md"
+  printf '%s\n' '.env' 'secrets/' 'my secret.env' '*.key' 'other.txt' 'link.env' '.rolepod/' > "$1/.gitignore"
+  printf 'COMMITTED\n' > "$1/tracked.env"
+  ( cd "$1" && git add -A && git commit -q -m "plan and rules" )
+  mkdir -p "$1/secrets/deep" "$1/sub"
+  printf '%s\n' "$V_ENV" > "$1/.env"; chmod 640 "$1/.env"
+  printf '%s\n' "$V_SA" > "$1/secrets/a.txt"; chmod 600 "$1/secrets/a.txt"
+  printf '%s\n' "$V_SB" > "$1/secrets/deep/b.txt"
+  printf '%s\n' "$V_MY" > "$1/my secret.env"
+  printf 'x\n' > "$1/other.txt"
+  printf 'v\n' > "$1/visible.env"
+  printf 'BASE-DIRTY\n' > "$1/tracked.env"
+  printf 'pub\n' > "$1/public.key"
+  printf '%s\n' "$V_PRIV" > "$1/private.key"
+  ln -s "$WTI_OUT_DIR/sentinel.txt" "$1/link.env"
+  printf '%s\n' '# other.txt' '.env' 'secrets/' 'my secret.env' 'visible.env' 'tracked.env' '*.key' '!public.key' 'link.env' \
+    '../wti outside/o.env' "$WTI_OUT_DIR/o.env" > "$1/.worktreeinclude"
+}
+wti_run() { # $1 = repo, $2 = output tag, $3 = cwd (default: the repo); sets WTI_RC, WTI_WT
+  ( cd "${3:-$1}" && bash "$TICKET" start "$1/plan.md" 1 >"$TMP/$2.out" 2>"$TMP/$2.err" ); WTI_RC=$?
+  WTI_WT="$(git -C "$1" worktree list --porcelain | sed -n 's/^worktree //p' | sed -n '2p')"
+}
+WTI_SNAP0="$(wti_snap)"
+
+WA="$TMP/wti repo A"; mk_wti "$WA"; wti_run "$WA" wtiA; WA_WT="$WTI_WT"; WA_RC="$WTI_RC"
+WA_ERR="$(cat "$TMP/wtiA.err")"
+[ "$WA_RC" -eq 0 ] && [ -d "$WA_WT" ] \
+  && cmp -s "$WA/.env" "$WA_WT/.env" && cmp -s "$WA/secrets/a.txt" "$WA_WT/secrets/a.txt" \
+  && cmp -s "$WA/secrets/deep/b.txt" "$WA_WT/secrets/deep/b.txt" && cmp -s "$WA/my secret.env" "$WA_WT/my secret.env" \
+  && [ "$(wti_mode "$WA/.env")" = "$(wti_mode "$WA_WT/.env")" ] && [ "$(wti_mode "$WA/secrets/a.txt")" = "$(wti_mode "$WA_WT/secrets/a.txt")" ] \
+  && printf '%s\n' "$WA_ERR" | grep -qxF 'ticket: start: worktreeinclude: copied 5 file(s)'
+wti_chk ".worktreeinclude: .env, secrets/ (nested) and 'my secret.env' reach a new worktree with the same content and mode" $? "rc=$WA_RC err=[$WA_ERR]"
+
+[ -f "$WA_WT/private.key" ] && [ ! -e "$WA_WT/visible.env" ] && [ ! -e "$WA_WT/other.txt" ] \
+  && [ "$(cat "$WA_WT/tracked.env")" = "COMMITTED" ] && printf '%s\n' "$WA_ERR" | grep -qF 'copied 5 file(s)'
+wti_chk ".worktreeinclude: a match that is not ignored, an ignored file that does not match, and a tracked file are not copied" $? "set=[$(wti_set "$WA_WT" | tr '\n' ' ')]"
+
+[ ! -e "$WA_WT/public.key" ] && [ -f "$WA_WT/private.key" ] && [ ! -e "$WA_WT/other.txt" ] && printf '%s\n' "$WA_ERR" | grep -qF 'copied 5 file(s)'
+wti_chk ".worktreeinclude: a # line has no effect and a ! line excludes (public.key out, private.key in)" $? "set=[$(wti_set "$WA_WT" | tr '\n' ' ')]"
+
+{ [ ! -e "$WA_WT/link.env" ] && [ ! -L "$WA_WT/link.env" ]; } \
+  && printf '%s\n' "$WA_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped link.env: source is a symlink or not a regular file' \
+  && ! grep -rqF 'SENTINEL-LINK-TEXT' "$WA_WT" && ! cat "$TMP/wtiA.out" "$TMP/wtiA.err" | grep -qF 'SENTINEL-LINK-TEXT' && [ -f "$WA_WT/.env" ]
+wti_chk ".worktreeinclude: a symlink source is skipped, its target text is in no worktree file nor in the output" $? "err=[$WA_ERR]"
+
+! grep -rqF 'OUTSIDE-TEXT' "$WA_WT" && ! cat "$TMP/wtiA.out" "$TMP/wtiA.err" | grep -qF 'OUTSIDE-TEXT' \
+  && [ "$(wti_snap)" = "$WTI_SNAP0" ] && printf '%s\n' "$WA_ERR" | grep -qF 'copied 5 file(s)'
+wti_chk ".worktreeinclude: a ../ pattern and an absolute pattern read nothing from outside the repo and write nothing outside the worktree" $? "outside changed or leaked"
+
+WA_ALL="$(cat "$TMP/wtiA.out" "$TMP/wtiA.err")"
+for wti_v in "$V_ENV" "$V_SA" "$V_SB" "$V_MY" "$V_PRIV"; do
+  printf '%s\n' "$WA_ALL" | grep -qF "$wti_v" && { WTI_LEAK="$wti_v"; break; }
+done
+[ -z "${WTI_LEAK:-}" ] && printf '%s\n' "$WA_ERR" | grep -qF 'copied 5 file(s)'
+wti_chk ".worktreeinclude: no copied file's content appears in stdout or stderr" $? "a fixture value leaked"
+
+[ "$(wc -l < "$TMP/wtiA.out" | tr -d ' ')" = "4" ] && ! grep -qF 'worktreeinclude' "$TMP/wtiA.out" \
+  && [ -n "$WA_ERR" ] && ! grep -qv '^ticket: start: worktreeinclude: ' "$TMP/wtiA.err" \
+  && [ "$(sed -n '2p' "$TMP/wtiA.out")" = "agent: owner-plan-t1" ] && sed -n '3p' "$TMP/wtiA.out" | grep -q '^ship: ' && sed -n '4p' "$TMP/wtiA.out" | grep -q '^task file: '
+wti_chk ".worktreeinclude: stdout stays the 4 lines without a worktreeinclude word, and every stderr line carries the prefix" $? "out=[$(cat "$TMP/wtiA.out" | cut -c1-80)] err=[$WA_ERR]"
+
+# Reuse: a second start of the same task reuses the worktree and copies nothing.
+rm -f "$WA_WT/.env"
+bash "$TICKET" start "$WA/plan.md" 1 >"$TMP/wtiA2.out" 2>"$TMP/wtiA2.err"; WA2_RC=$?
+[ "$WA2_RC" -eq 0 ] && [ ! -e "$WA_WT/.env" ] && [ ! -s "$TMP/wtiA2.err" ] && [ -f "$WA_WT/private.key" ]
+wti_chk ".worktreeinclude: an existing worktree is reused as is — a deleted copy stays absent, stderr empty" $? "rc=$WA2_RC err=[$(cat "$TMP/wtiA2.err")]"
+
+# From a subdirectory of the base: the same set as from the root.
+WB="$TMP/wti repo B"; mk_wti "$WB"; wti_run "$WB" wtiB "$WB/sub"; WB_WT="$WTI_WT"
+WB_WANT="$(printf '%s\n' ./.env ./.gitignore './my secret.env' ./plan.md ./private.key ./secrets/a.txt ./secrets/deep/b.txt ./tracked.env | sort)"
+[ "$WTI_RC" -eq 0 ] && [ "$(wti_set "$WB_WT")" = "$WB_WANT" ] \
+  && grep -qxF 'ticket: start: worktreeinclude: copied 5 file(s)' "$TMP/wtiB.err"
+wti_chk ".worktreeinclude: start run from a subdirectory of the base copies the same set" $? "rc=$WTI_RC set=[$(wti_set "$WB_WT" | tr '\n' ' ')]"
+
+# T1: the task branch does not ignore .env (its .gitignore dropped the line) -> skipped with a warning, never staged.
+WC="$TMP/wti repo C"; mk_wti "$WC"; wti_run "$WC" wtiC1; WC_WT="$WTI_WT"
+printf '%s\n' 'secrets/' 'my secret.env' '*.key' 'other.txt' 'link.env' '.rolepod/' > "$WC_WT/.gitignore"
+git -C "$WC_WT" commit -q -am "branch stops ignoring .env"
+git -C "$WC" worktree remove --force "$WC_WT"
+wti_run "$WC" wtiC2; WC_WT="$WTI_WT"; WC_ERR="$(cat "$TMP/wtiC2.err")"
+[ "$WTI_RC" -eq 0 ] && [ ! -e "$WC_WT/.env" ] \
+  && printf '%s\n' "$WC_ERR" | grep -qxF "ticket: start: worktreeinclude: skipped .env: the new worktree's branch does not ignore it" \
+  && [ -z "$(git -C "$WC_WT" status --porcelain | grep -F '.env')" ] \
+  && cmp -s "$WC/private.key" "$WC_WT/private.key" && printf '%s\n' "$WC_ERR" | grep -qxF 'ticket: start: worktreeinclude: copied 4 file(s)'
+wti_chk ".worktreeinclude: a path the new worktree's branch does not ignore is skipped with a warning and is not in git status" $? "rc=$WTI_RC err=[$WC_ERR]"
+
+# T6 + T4: the task branch tracks the destinations — an existing file, a symlink to an outside sentinel, a dangling symlink, a symlinked directory.
+WD="$TMP/wti repo D"; mk_wti "$WD"; wti_run "$WD" wtiD1; WD_WT="$WTI_WT"
+( cd "$WD_WT" && rm -rf secrets && ln -s "$WTI_OUT_DIR/secdir" secrets \
+  && printf 'TRACKED-ENV\n' > .env && rm -f private.key && ln -s "$WTI_OUT_DIR/dest-sentinel.txt" private.key \
+  && rm -f "my secret.env" && ln -s "$TMP/wti-nowhere" "my secret.env" \
+  && git add -f secrets .env private.key "my secret.env" && git commit -q -m "track the destinations" )
+git -C "$WD" worktree remove --force "$WD_WT"
+WTI_SNAP1="$(wti_snap)"
+wti_run "$WD" wtiD2; WD_WT="$WTI_WT"; WD_ERR="$(cat "$TMP/wtiD2.err")"
+[ "$WTI_RC" -eq 0 ] && [ "$(cat "$WD_WT/.env")" = "TRACKED-ENV" ] \
+  && printf '%s\n' "$WD_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped .env: destination exists' \
+  && [ -L "$WD_WT/private.key" ] && [ "$(cat "$WTI_OUT_DIR/dest-sentinel.txt")" = "DEST-SENTINEL-4f90" ] \
+  && [ -L "$WD_WT/my secret.env" ] && [ ! -e "$TMP/wti-nowhere" ] && [ ! -L "$TMP/wti-nowhere" ] \
+  && printf '%s\n' "$WD_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped private.key: destination exists' \
+  && printf '%s\n' "$WD_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped my secret.env: destination exists'
+wti_chk ".worktreeinclude: an existing destination file is kept, a destination symlink (even a dangling one) is never written through" $? "rc=$WTI_RC err=[$WD_ERR]"
+[ -z "$(ls -A "$WTI_OUT_DIR/secdir")" ] && [ "$(wti_snap)" = "$WTI_SNAP1" ] \
+  && printf '%s\n' "$WD_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped secrets/a.txt: destination parent is a symlink' \
+  && printf '%s\n' "$WD_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped secrets/deep/b.txt: destination parent is a symlink' \
+  && printf '%s\n' "$WD_ERR" | grep -qxF 'ticket: start: worktreeinclude: copied 0 file(s)'
+wti_chk ".worktreeinclude: a destination under a tracked symlinked directory is skipped, nothing lands outside the worktree" $? "err=[$WD_ERR]"
+
+# T2: pattern * with ignored sentinels under .rolepod/ and another worktree's .worktrees/ dir.
+WE="$TMP/wti repo E"; mk_wti "$WE"; printf '*\n' > "$WE/.worktreeinclude"
+mkdir -p "$WE/.rolepod" "$WE/.worktrees/other"
+printf 'SENT-ROLEPOD\n' > "$WE/.rolepod/s.txt"; printf 'SENT-OTHER-WT\n' > "$WE/.worktrees/other/s.txt"
+wti_run "$WE" wtiE; WE_WT="$WTI_WT"; WE_ERR="$(cat "$TMP/wtiE.err")"
+[ "$WTI_RC" -eq 0 ] && [ ! -e "$WE_WT/.rolepod" ] && [ ! -e "$WE_WT/.worktrees" ] && [ -f "$WE_WT/.env" ] \
+  && printf '%s\n' "$WE_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped .rolepod/s.txt: inside .git/, .worktrees/ or .rolepod/' \
+  && printf '%s\n' "$WE_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped .worktrees/other/s.txt: inside .git/, .worktrees/ or .rolepod/' \
+  && [ "$(wc -l < "$WE_WT/.git" | tr -d ' ')" = "1" ] && grep -q '^gitdir: .*/\.git/worktrees/' "$WE_WT/.git" \
+  && git -C "$WE_WT" status --porcelain >/dev/null 2>&1 && [ "$(git -C "$WE_WT" rev-parse --show-toplevel)" = "$WE_WT" ]
+wti_chk ".worktreeinclude: pattern * copies nothing from .git/, .worktrees/ or .rolepod/, and the worktree's .git file still works" $? "rc=$WTI_RC err=[$WE_ERR]"
+
+# A source that cannot be read: warn with the path, go on, leave no partial or temp file.
+WF="$TMP/wti repo F"; mk_wti "$WF"; chmod 000 "$WF/my secret.env"
+wti_run "$WF" wtiF; WF_WT="$WTI_WT"; WF_ERR="$(cat "$TMP/wtiF.err")"; WF_RC="$WTI_RC"
+chmod 600 "$WF/my secret.env"
+[ "$WF_RC" -eq 0 ] && [ -d "$WF_WT" ] && printf '%s\n' "$WF_ERR" | grep -qxF 'ticket: start: worktreeinclude: skipped my secret.env: copy failed' \
+  && cmp -s "$WF/.env" "$WF_WT/.env" && cmp -s "$WF/private.key" "$WF_WT/private.key" \
+  && [ ! -e "$WF_WT/my secret.env" ] && [ -z "$(find "$WF_WT" -name '.worktreeinclude.*' -not -path "$WF_WT/.git/*")" ] \
+  && printf '%s\n' "$WF_ERR" | grep -qxF 'ticket: start: worktreeinclude: copied 4 file(s)'
+wti_chk ".worktreeinclude: an unreadable source warns with its path, start exits 0, the other files copy, no partial or temp file remains" $? "rc=$WF_RC err=[$WF_ERR]"
+
+# No .worktreeinclude: nothing on stderr, the usual 4 stdout lines.
+WG="$TMP/wti repo G"; mk_wti "$WG"; rm -f "$WG/.worktreeinclude"
+wti_run "$WG" wtiG
+[ "$WTI_RC" -eq 0 ] && [ ! -s "$TMP/wtiG.err" ] && [ "$(wc -l < "$TMP/wtiG.out" | tr -d ' ')" = "4" ] && [ ! -e "$WTI_WT/.env" ]
+wti_chk ".worktreeinclude: without the file stderr is empty and stdout is the 4 lines" $? "err=[$(cat "$TMP/wtiG.err")]"
+
 # A handoff from the old plan-lint (a ../<repo>-wt-<name> sibling path, an in-flight plan) still starts as before.
 LGS="$TMP/legacy-skills"; mkdir -p "$LGS/implement-plan/scripts" "$LGS/write-plan/scripts"
 cp "$TICKET" "$LGS/implement-plan/scripts/ticket.sh"

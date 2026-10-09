@@ -888,6 +888,54 @@ blockers_merged() { # $1 = plan, $2 = base checkout, $3 = tracks table, $4 = tas
 
 # ── start ────────────────────────────────────────────────────────────────
 
+# A NEW worktree holds tracked files only; the repo-root .worktreeinclude (the
+# file Claude Code and Codex read for their own worktrees) names the gitignored
+# files to copy in. $1 base root, $2 worktree. Candidates come from git's own gitignore
+# engine (never a hand-written glob) and are kept only when the base ignores
+# them too (intersection). Every guard skips with one stderr line naming the
+# path and the reason, never a file's content; a failed copy warns and goes on,
+# so start still exits 0. Bash 3.2 safe: NUL-delimited, no arrays.
+wti_note() { # $1 = path, $2 = reason — a path with a newline must not forge a line
+  printf 'ticket: start: worktreeinclude: skipped %s: %s\n' "$(printf '%s' "$1" | tr '\n\r' '??')" "$2" >&2
+}
+copy_worktreeinclude() {
+  local root="$1" wt="$2" inc="$1/.worktreeinclude"
+  [ -f "$inc" ] || return 0
+  local copied=0 rel src dst dir rest comp acc tmp
+  while IFS= read -r -d '' rel <&3; do
+    git -C "$root" check-ignore -q -- "$rel" 2>/dev/null || continue
+    case "$rel" in
+      .git/*|.worktrees/*|.rolepod/*|*/.git/*|*/.worktrees/*|*/.rolepod/*)
+        wti_note "$rel" "inside .git/, .worktrees/ or .rolepod/"; continue ;;
+    esac
+    src="$root/$rel"; dst="$wt/$rel"
+    if [ -L "$src" ] || [ ! -f "$src" ]; then wti_note "$rel" "source is a symlink or not a regular file"; continue; fi
+    if [ -e "$dst" ] || [ -L "$dst" ]; then wti_note "$rel" "destination exists"; continue; fi
+    # A tracked symlinked directory in the worktree would send mkdir -p / cp outside it.
+    acc=""; rest=""; dir=""
+    case "$rel" in */*) dir="${rel%/*}" ;; esac
+    rest="$dir"
+    while [ -n "$rest" ]; do
+      comp="${rest%%/*}"
+      case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac
+      acc="${acc:+$acc/}$comp"
+      if [ -L "$wt/$acc" ]; then dir="!"; break; fi
+    done
+    if [ "$dir" = "!" ]; then wti_note "$rel" "destination parent is a symlink"; continue; fi
+    # Never stage a secret: integrate's git add -A takes what the branch does not ignore.
+    if ! git -C "$wt" check-ignore -q -- "$rel" 2>/dev/null; then wti_note "$rel" "the new worktree's branch does not ignore it"; continue; fi
+    if [ -n "$dir" ] && ! mkdir -p "$wt/$dir" 2>/dev/null; then wti_note "$rel" "cannot create its directory"; continue; fi
+    tmp="$(mktemp "$(dirname "$dst")/.worktreeinclude.XXXXXX" 2>/dev/null)" || { wti_note "$rel" "cannot create a temp file"; continue; }
+    if cp -p "$src" "$tmp" 2>/dev/null && mv "$tmp" "$dst" 2>/dev/null; then
+      copied=$((copied+1))
+    else
+      rm -f "$tmp" 2>/dev/null
+      wti_note "$rel" "copy failed"
+    fi
+  done 3< <(git -C "$root" ls-files -z --others --ignored --exclude-from="$inc" 2>/dev/null)
+  printf 'ticket: start: worktreeinclude: copied %d file(s)\n' "$copied" >&2
+}
+
 cmd_start() {
   local plan="${1:-}"; shift || true
   local n="${1:-}"; shift || true
@@ -1041,6 +1089,7 @@ cmd_start() {
       printf '%s\n' "$add_out" >&2
       exit 1
     fi
+    copy_worktreeinclude "$repo_root" "$wt_abs"
   fi
 
   # integrate / finish work against this checkout, not the first-listed one.
