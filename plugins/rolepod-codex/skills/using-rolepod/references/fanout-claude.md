@@ -32,6 +32,7 @@ Each deny names its fix; keep ONE strong call outside the fan-out for the judge.
 
 A script may run one task end to end: build → review → fix → re-check. The script is then the orderer; every `convening-code-review` rule still holds.
 - One task per script, and the script never commits: it returns to the Lead, who accepts and integrates (`orchestrating-plans` step 3) before the next task.
+- Parallel tracks (the plan's Parallel layout names them) → one script per track, all launched in ONE message; each build brief names its track's worktree (`ticket.sh start` prints it); never `isolation: 'worktree'`, whose harness-made worktree sits off the track branch.
 - Build: `rolepod-builder`, its brief saying "your caller runs the round"; its schema returns the decision-brief fields, the Command tail, and the frozen diff file, H1 and hash. Continue only on `COMPLETED` with a non-empty tail; anything else returns to the Lead.
 - Review: the set `plan-lint.sh --review-set --tier <tier> --mode <carried mode>` prints. Ultracode deepens each lens, never widens the set (Lite = spec + standards); a lens past it only on the user's ask. Each brief carries `convening-code-review` step 3's brief and names `.rolepod/evidence/review/<task>-<lens>.md`.
 - Write the lenses as a hand-written `parallel([...])`, not a `.map`, so a `lens: security` / `lens: adversarial` call can carry a strong `model:`; cannot → it runs balanced and the receipt says so.
