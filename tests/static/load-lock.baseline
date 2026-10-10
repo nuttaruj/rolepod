@@ -6,9 +6,9 @@ cli-antigravity	AGENTS.md	7149
 cli-codex	AGENTS.md	6891
 cli-cursor	rules/always-on-core.mdc	6823
 cli-opencode	AGENTS.md	7085
-lead	agent-listing	1602
+lead	agent-listing	1623
 lead	hooks/always-on-core.md	6044
-lead	session-path	71546
+lead	session-path	71567
 lead	session-start	6283
 lead	skill-listing	3612
 lead	skills/check-work/SKILL.md	5647
@@ -96,7 +96,7 @@ review-round	lite-r4-round1	46468
 review-round	standard-r4-round1	71895
 lead	skills/implement-plan/references/writing.md	2721
 owner	agents/rolepod-builder.md	6145
-owner	agents/rolepod-qa.md	8367
+owner	agents/rolepod-qa.md	8435
 owner	skills/implement-plan/references/writing.md	2721
 reviewer	agents/rolepod-reviewer.md	5937
 reviewer	skills/adversarial-review/SKILL.md	6691

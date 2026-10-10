@@ -16,4 +16,5 @@ tools:
   - mcp__plugin_rolepod-uiproof_rolepod-uiproof
   - mcp__playwright
   - mcp__chrome-devtools
+  - mcp__Claude_Browser
   - mcp__claude-in-chrome
