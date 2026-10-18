@@ -39,7 +39,7 @@ run_case() {
   else
     echo "  ✗ FAIL — see $out"
     # CI has no shell into the runner: surface the failing assertions inline.
-    grep -E '^\s*✗|^\+|rror' "$out" | head -20 | sed 's/^/      /'
+    grep -E '^\s*✗|^\+|rror' "$out" | head -20 | sed 's/^/      /' || true
     FAIL=$((FAIL+1))
     FAILED_NAMES+=("$name")
   fi
