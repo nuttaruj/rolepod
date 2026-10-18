@@ -19,6 +19,7 @@ tools:
   - mcp__playwright
   - mcp__chrome-devtools
   - mcp__Claude_Browser
+  - mcp__Claude_Preview
   - mcp__claude-in-chrome
 skills:
   - rolepod:implement-plan
