@@ -116,9 +116,9 @@ if agent_id and tool_name == 'Agent':
     if name or subagent_type == 'fork' or isolation == 'remote':
         wait = 'agent-always-bg'
     elif ti.get('run_in_background') in (True, 'true', 'True'):
-        # An unset flag is fine: Claude Code 2.1.284 has no such parameter
-        # and a child's end wakes the dispatching sub-agent (the desktop app
-        # sends it to the Lead, which relays it).
+        # An unset flag is fine: Claude Code has no such parameter; the
+        # call runs in the foreground (desktop / VS Code / -p / SDK, 2.1.302)
+        # or the child's end wakes the dispatching sub-agent (terminal).
         wait = 'agent-bg'
 
 elif agent_id and tool_name == 'SendMessage':
