@@ -1572,12 +1572,20 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
         nonish = (blow ~ /^none([^a-z0-9]|$)/)
         if (bval ~ /^(-|—|–)([[:space:]]|$)/ && blow !~ /task ?[0-9]/) nonish = 1
         if (!nonish) {
-          # The value is cut to showcap bytes without splitting a UTF-8
-          # sequence (an awk that slices bytes would print half a character).
+          # The value is cut to showcap without splitting a UTF-8 sequence.
+          # A multibyte-aware awk (length("\303\251") == 1) slices whole
+          # characters; a byte awk slices bytes, so its cut backs off to a
+          # sequence start. Continuation bytes (0x80-0xBF) are found with
+          # index() on a byte table: a regex on a lone byte makes the system
+          # awk die with "towc: multibyte conversion failure".
           showcap = 40; shown = substr(bval, 1, showcap)
-          if (substr(bval, showcap + 1, 1) ~ /^[\200-\277]$/) {
-            while (shown != "" && substr(shown, length(shown), 1) ~ /^[\200-\277]$/) shown = substr(shown, 1, length(shown) - 1)
-            shown = substr(shown, 1, length(shown) - 1)
+          if (length("\303\251") == 2) {
+            cont = ""; for (ci = 128; ci < 192; ci++) cont = cont sprintf("%c", ci)
+            nb = substr(bval, showcap + 1, 1)
+            if (nb != "" && index(cont, nb) > 0) {
+              while (shown != "" && index(cont, substr(shown, length(shown), 1)) > 0) shown = substr(shown, 1, length(shown) - 1)
+              shown = substr(shown, 1, length(shown) - 1)
+            }
           }
           print "A Task " t " Blocked by \"" shown "\" names no task — start it with Task N, or write none"
         }

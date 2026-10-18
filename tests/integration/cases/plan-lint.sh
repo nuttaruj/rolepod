@@ -444,7 +444,7 @@ echo "$OUT" | grep -qF "Blocked by \"${LONG:0:40}\" names no task" \
 THAI=$'\340\271\201\340\270\245\340\270\260'
 mk "$TMP/g-thai.md" $'### Task 1: a\n- **Blocked by:** none' "### Task 2: b"$'\n- **Blocked by:** '"$(printf 'a%.0s' $(seq 38))$THAI$THAI"
 RC=0; OUT=$(bash "$LINT" "$TMP/g-thai.md" 2>&1) || RC=$?
-SHOWN=$(echo "$OUT" | grep 'names no task' | sed 's/^[^"]*"//; s/".*$//')
+SHOWN=$(echo "$OUT" | { grep 'names no task' || true; } | sed 's/^[^"]*"//; s/".*$//')
 [ -n "$SHOWN" ] && [ "${#SHOWN}" -le 40 ] && printf '%s' "$SHOWN" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1 \
   && echo "  ✓ plan-lint.sh never cuts a Blocked by value mid-UTF-8" \
   || { echo "  ✗ plan-lint.sh split a UTF-8 sequence at the 40 cut: $OUT"; fail=$((fail+1)); }
