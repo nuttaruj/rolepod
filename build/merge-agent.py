@@ -87,11 +87,12 @@ NATIVE_SKILL_REF = {"claude": lambda n: CLAUDE_SKILL_PREFIX + n}
 #                       `default_subagent_model` or the Lead's model (Codex
 #                       docs). The tier still shows as `model_reasoning_effort`,
 #                       from the Codex overlay.
-#   agy               → advisory only: agy auto-selects the model per task and
-#                       does not consume this value (documented in model-tier-policy).
-#                       agy 1.4.2 takes tier names (pro / flash / flash_lite /
-#                       inherit), not model ids: a gemini-3-* id makes the
-#                       loader skip the agent. Antigravity is built on Google's
+#   agy               → advisory pin: agy 1.4.2 validates `model:` as a tier name
+#                       (pro / flash / flash_lite / inherit), and the loader skips
+#                       an agent with any other value, a gemini-3-* id included.
+#                       Whether agy routes the subagent's model by that tier is
+#                       unverified, so the pin stays advisory (documented in
+#                       model-tier-policy). Antigravity is built on Google's
 #                       Gemini model family; unrelated to the retired Gemini
 #                       CLI, whose adapter was removed in v2.177.0.
 TIER_MODELS = {

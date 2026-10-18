@@ -137,9 +137,10 @@ if command -v agy >/dev/null 2>&1; then
   # agy 1.4.2 prints "✔ Validation passed" (older agy printed [ok]); every
   # agents/*.md must load, so the agents count must match the files on disk.
   vout=$(agy plugin validate "$P" </dev/null 2>&1 | sed 's/\x1b\[[0-9;]*m//g') || true
-  want_agents=$(ls "$P"/agents/*.md | wc -l | tr -d ' ')
-  if printf '%s' "$vout" | grep -qE '\[ok\]|Validation passed' \
-     && printf '%s' "$vout" | grep -q "agents $want_agents" \
+  want_agents=$(ls "$P"/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$want_agents" -gt 0 ] \
+     && printf '%s' "$vout" | grep -qE '\[ok\]|Validation passed' \
+     && printf '%s' "$vout" | grep -qE "agents ${want_agents}( |\$)" \
      && ! printf '%s' "$vout" | grep -q '✗'; then
     echo "  ✓ agy plugin validate → passed, agents $want_agents, no ✗ (agy $(agy --version 2>/dev/null | head -1))"
   else
