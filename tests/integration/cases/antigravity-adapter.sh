@@ -134,10 +134,16 @@ check "using-rolepod workflow helper bundles the canonical config reader" \
 
 # Live deterministic validation when agy is installed; else skip cleanly.
 if command -v agy >/dev/null 2>&1; then
-  if agy plugin validate "$P" </dev/null 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -q '\[ok\]'; then
-    echo "  ✓ agy plugin validate → [ok] (agy $(agy --version 2>/dev/null | head -1))"
+  # agy 1.4.2 prints "✔ Validation passed" (older agy printed [ok]); every
+  # agents/*.md must load, so the agents count must match the files on disk.
+  vout=$(agy plugin validate "$P" </dev/null 2>&1 | sed 's/\x1b\[[0-9;]*m//g') || true
+  want_agents=$(ls "$P"/agents/*.md | wc -l | tr -d ' ')
+  if printf '%s' "$vout" | grep -qE '\[ok\]|Validation passed' \
+     && printf '%s' "$vout" | grep -q "agents $want_agents" \
+     && ! printf '%s' "$vout" | grep -q '✗'; then
+    echo "  ✓ agy plugin validate → passed, agents $want_agents, no ✗ (agy $(agy --version 2>/dev/null | head -1))"
   else
-    echo "  ✗ agy plugin validate did not report [ok]"; fail=$((fail+1))
+    echo "  ✗ agy plugin validate did not pass with agents $want_agents and no ✗"; fail=$((fail+1))
   fi
 else
   echo "  ~ agy not on PATH — skipping live validate"

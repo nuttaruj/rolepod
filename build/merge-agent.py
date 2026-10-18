@@ -89,10 +89,11 @@ NATIVE_SKILL_REF = {"claude": lambda n: CLAUDE_SKILL_PREFIX + n}
 #                       from the Codex overlay.
 #   agy               → advisory only: agy auto-selects the model per task and
 #                       does not consume this value (documented in model-tier-policy).
-#                       Model ids are agy's own (gemini-3-* — Antigravity is
-#                       built on Google's Gemini model family; unrelated to
-#                       the retired Gemini CLI, whose adapter was removed in
-#                       v2.177.0).
+#                       agy 1.4.2 takes tier names (pro / flash / flash_lite /
+#                       inherit), not model ids: a gemini-3-* id makes the
+#                       loader skip the agent. Antigravity is built on Google's
+#                       Gemini model family; unrelated to the retired Gemini
+#                       CLI, whose adapter was removed in v2.177.0.
 TIER_MODELS = {
     # Claude strong = "opus" (v2.104.0; was "inherit" + a hook-side lift).
     # A frontmatter pin is the only floor that holds everywhere the hook does
@@ -102,7 +103,7 @@ TIER_MODELS = {
     # keeps its own model, its strong reviewers run opus, no lift. The hook
     # only re-writes opus under a low Lead for a stale user-level agent file.
     "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "opus"},
-    "antigravity": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},
+    "antigravity": {"cheap": "flash", "balanced": "pro", "strong": "pro"},
 }
 
 # Codex has no model map (no pin at all — see TIER_MODELS comment above), but
