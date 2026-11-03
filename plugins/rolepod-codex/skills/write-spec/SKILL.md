@@ -19,11 +19,12 @@ Turns an unclear, non-trivial request into an approved spec file — the contrac
 - User-supplied spec or exact approved change list naming each target → use it as the spec; do not interview again.
 - Otherwise, quote the request and inspect relevant code and decisions, constraints, and the project's follow-up list (`docs/rolepod/backlog.md` or its issue tracker). Remove an adopted backlog item when the spec is approved.
 - Record one-sentence goal, actor, product mode (`change` or `new`), constraints, and the touched surfaces on the high-risk list (`using-rolepod` Stop conditions).
+- Inventory what already exists on each surface the request names (a feature, flow, provider, table, setting): its current behavior with `file:line`, or `none found` after a search. A wide or unknown spread → `rolepod-scout`, one per surface, all in ONE message; no subagents → grep + Read yourself.
 - A repeat feature may inherit Goal, User / actor, Non-goals, Constraints, Chosen approach, or Rejected approaches as `Unchanged — <prior spec> §<section>`; verify current behavior from code and write behavior, criteria, testing, risk, and open questions fresh.
 - Goal spans independent outcomes → `references/scope-splitting.md` (split signals, slicing); no file → one spec per shippable outcome, every slice written now, approved as one set; one that waits on what an earlier slice's build finds stays a Non-goal; confirm the build order in Discovery.
 - Open decisions block listing the slices → `references/chart-work.md` (decision map, question tickets); no file → settle the blocking decisions one at a time in Discovery until the slices can be listed. A mapped, decided question is cited as `Decided — q-<slug>`, never asked again.
 
-Done when: goal, actor, product mode, constraints, risk surfaces, and any needed work split are recorded.
+Done when: goal, actor, product mode, constraints, risk surfaces, the existing-behavior inventory, and any needed work split are recorded.
 
 ### 2. Discovery
 
@@ -33,8 +34,9 @@ Native question UI when the CLI has one; else numbered questions with lettered o
 A partial reply (`1a 3c`) closes only those questions; the rest stay open next round, never defaulted. `defaults` takes only the recommendations shown that round; silence is not an answer.
 "Don't know" → a fact becomes research; a decision stays open, or the user takes the default and the spec ends that line `(assumed)`. No option fits → the user's own words are the answer. The user asks for one question at a time → the same frontier, one question per message.
 
-Facts are researched, never asked: what the codebase or docs can answer, explore.
-While a round is out, `rolepod-scout` researches the unknowns — one per independent unknown, all in ONE message; only questions downstream of a running `rolepod-scout` wait. No subagents → the Lead researches between rounds.
+Facts are researched, never asked: what the codebase or docs can answer, explore. The first round goes out only after the step 1 inventory is in.
+A decision about something that already exists states it first, with `file:line`, and asks only the change; the default is to keep it ("Google + LINE login exist (`auth/providers.ts:12`) — a) keep as is (recommended) b) add Facebook"). Never ask the user what the code already shows.
+While a round is out, `rolepod-scout` researches the unknowns its answers opened — one per independent unknown, all in ONE message; only questions downstream of a running `rolepod-scout` wait. No subagents → the Lead researches between rounds.
 A user answer naming a file, symbol, library or pattern is a claim: check it (`rolepod-scout`, else grep) before recording; a mismatch opens the next round with the code quoted.
 Scope, user stories, priorities and cost / ROI come from the user — the product owner.
 A domain term with more than one live reading → resolve it in the round (`CONTEXT.md` handling → `references/question-bank.md` Domain term; no file → read `CONTEXT.md` when present, propose one canonical word with a boundary example, ask only what the user must decide).

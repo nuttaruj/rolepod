@@ -30,7 +30,7 @@ One or two sentences of what the term IS, not what it does; be opinionated — o
 Who triggers this? Who sees the result? Is it self-service or admin-only?
 
 ### Data source
-Where does the data come from — existing table, new table, external API? Is it already populated?
+Research first: which tables, APIs and records already hold it, and whether they are populated. Ask only the decision left: reuse, extend, or a new source.
 
 ### Permission / auth
 Who is allowed to do this? Does it create or change a credential or permission?
@@ -66,6 +66,7 @@ Stop early: if an answer makes a later question irrelevant, skip it.
 ## Skip a question when
 
 - The user already answered it this session or in a prior spec revision — re-ask only when new evidence changes it, and say what changed.
+- The code, config or docs already answer it (what exists, which providers, which fields) — state the finding with `file:line` and ask only whether to change it.
 
 ## Prototype offer
 
