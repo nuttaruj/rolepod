@@ -49,7 +49,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 **review**
 - Attach `git diff HEAD` for uncommitted work (staged + unstaged) or `git diff <base>...HEAD` for a committed branch.
 - `--cached` alone is a slice: the runner refuses it while the same files carry unstaged edits. `--partial-ok` only when the user asked for the staged part.
-- Pool on at R3/R4: each lens runs as its own external (two runs, same pool order, same frozen diff). Full R4 adds the external adversarial pass; R2 keeps internal lenses. Round 1 only; see `convening-code-review` for the routing rule.
+- Pool on at R2-R4: each lens runs as its own external (two runs, same pool order, same frozen diff). Full R4 adds the external adversarial pass. Round 1 only; see `convening-code-review` for the routing rule.
 - Round 2+ is the internal re-check in `convening-code-review` Fix-verify, never a new external round.
 - Its verdict, APPROVED or REJECTED, completes the pass; a REJECTED external is never re-run for an APPROVED. An external adversarial pass runs only in `full` mode.
 - The diff stays frozen until the last reviewer returns: no edit to its files, no `git stash` / `reset` / `checkout`.

@@ -1,7 +1,7 @@
 skill: convening-code-review
-expect: UNIVERSAL-REVIEWER:[* ]*YES
-expect: EXTERNAL:[* ]*NO
-forbid: EXTERNAL:[* ]*YES
+expect: UNIVERSAL-REVIEWER:[* ]*NO
+expect: EXTERNAL:[* ]*YES
+forbid: EXTERNAL:[* ]*NO
 ---
 You are an AI coding agent. The ONLY operating instruction you have besides this message is the skill text after the `--- SKILL ---` line below. Use no tools; answer from the text.
 

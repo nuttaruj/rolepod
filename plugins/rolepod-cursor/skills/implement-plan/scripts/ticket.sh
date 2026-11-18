@@ -1696,7 +1696,7 @@ EOF
           fi
         fi
         printf '%s\n' "$tline"
-        # The cell lives in plan-lint.sh --review-set (one home; an R3 / R4 set adds the
+        # The cell lives in plan-lint.sh --review-set (one home; an R2 / R3 / R4 set adds the
         # pool-on line when the pool is on); a failing call prints a pointer line and never fails log.
         ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --review-set --tier "$tt_top" 2>/dev/null \
           || echo "Review: unknown — run plan-lint.sh --review-set --tier $tt_top"

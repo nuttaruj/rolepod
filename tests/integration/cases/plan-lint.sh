@@ -1718,8 +1718,8 @@ else
   echo "  ✗ --brief file+test Tier wrong: $OUTR2"; fail=$((fail+1))
 fi
 
-# (3d) external-pool-review-only: pool on + an R3/R4 task -> the C2 line under
-# the lens line (lite / standard / full R4, only-code R3); an R2 task or pool off
+# (3d) external-pool-review-only: pool on + an R2/R3/R4 task -> the C2 line under
+# the lens line (lite / standard / full R4, only-code R3 / R2); pool off
 # never prints it; the brief has no ## Write section.
 HOME_XP="$TMP/home-xpool"; mkdir -p "$HOME_XP/.rolepod"
 printf '{"pool":{"reviewer":{"review":"codex"}}}\n' > "$HOME_XP/.rolepod/config.json"
@@ -1740,28 +1740,28 @@ printf '%s\n' "$o" | grep -qxF "$C2_TXT" || { xp_ok=0; echo "  . pool on only-co
 o=$(xp_brief "$HOME_NOXP" lite "$TMP/brief-tier-r3.md")
 printf '%s\n' "$o" | grep -qF -- '--lens' && { xp_ok=0; echo "  . pool off only-code R3: --lens printed"; }
 o=$(xp_brief "$HOME_XP" lite "$TMP/brief-tier-r2.md")
-printf '%s\n' "$o" | grep -qF -- '--lens' && { xp_ok=0; echo "  . pool on only-code R2: --lens printed"; }
+printf '%s\n' "$o" | grep -qxF "$C2_TXT" || { xp_ok=0; echo "  . pool on only-code R2: C2 missing"; }
+o=$(xp_brief "$HOME_NOXP" lite "$TMP/brief-tier-r2.md")
+printf '%s\n' "$o" | grep -qF -- '--lens' && { xp_ok=0; echo "  . pool off only-code R2: --lens printed"; }
 printf '%s\n' "$o" | grep -q '^## Write' && { xp_ok=0; echo "  . ## Write still printed"; }
 if [ "$xp_ok" = 1 ]; then
-  echo "  ✓ plan-lint.sh --brief prints the external lens line only with pool on and R3/R4 (lite/standard/full R4, only-code R3); R2 and pool off print none; no ## Write"
+  echo "  ✓ plan-lint.sh --brief prints the external lens line only with pool on and R2-R4 (lite/standard/full R4, only-code R3 / R2); pool off prints none; no ## Write"
 else
   echo "  ✗ --brief external lens line wrong"; fail=$((fail+1))
 fi
 
-# (3e) --review-set shares the sentence: pool on + R3/R4 → the line after the set line (also with
-# ROLEPOD_BRIEF_NOREC=1, as ticket.sh log calls it); R1 / R2, pool off, no reader config → byte-identical.
+# (3e) --review-set shares the sentence: pool on + R2-R4 → the line after the set line (also with
+# ROLEPOD_BRIEF_NOREC=1, as ticket.sh log calls it); R1, pool off, no reader config → byte-identical.
 rsx() { ( cd "$TMP" && HOME="$1" ROLEPOD_PROJECT_ROOT="$TMP" ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --review-set "${@:2}" 2>/dev/null ); }
 rsx_ok=1
 for m in lite standard full; do
-  for t in R3 R4; do
+  for t in R2 R3 R4; do
     off=$(rsx "$HOME_NOXP" --tier $t --mode $m); on=$(rsx "$HOME_XP" --tier $t --mode $m)
     [ "$on" = "$off"$'\n'"$C2_TXT" ] || { rsx_ok=0; echo "  . pool on $m $t: on=[$on]"; }
     [ "$(printf '%s\n' "$off" | grep -c .)" -eq 1 ] || { rsx_ok=0; echo "  . pool off $m $t: extra line"; }
   done
-  for t in R1 R2; do
-    [ "$(rsx "$HOME_XP" --tier $t --mode $m)" = "$(rsx "$HOME_NOXP" --tier $t --mode $m)" ] || { rsx_ok=0; echo "  . pool on $m $t differs"; }
-    rsx "$HOME_XP" --tier $t --mode $m | grep -qF 'Pool on' && { rsx_ok=0; echo "  . pool on $m $t: line printed"; }
-  done
+  [ "$(rsx "$HOME_XP" --tier R1 --mode $m)" = "$(rsx "$HOME_NOXP" --tier R1 --mode $m)" ] || { rsx_ok=0; echo "  . pool on $m R1 differs"; }
+  rsx "$HOME_XP" --tier R1 --mode $m | grep -qF 'Pool on' && { rsx_ok=0; echo "  . pool on $m R1: line printed"; }
 done
 # Fail closed: a copy of the script with no reader, or a reader that exits non-zero, prints garbage
 # or prints nothing → byte-identical to the pool-off output.
@@ -1778,7 +1778,7 @@ done
 printf '%s\n' 'import sys; print("enabled=on") if sys.argv[1:] == ["pool"] else None' > "$FC/a/b/c/rolepod_config.py"
 [ "$(rsfc)" = "$rs_off"$'\n'"$C2_TXT" ] || { rsx_ok=0; echo "  . fake on-reader control: line missing"; }
 if [ "$rsx_ok" = 1 ]; then
-  echo "  ✓ --review-set prints the pool-on external line for R3/R4 only with pool on; R1/R2, pool off and a missing / failing / garbage / silent reader are unchanged"
+  echo "  ✓ --review-set prints the pool-on external line for R2-R4 only with pool on; R1, pool off and a missing / failing / garbage / silent reader are unchanged"
 else
   echo "  ✗ --review-set pool line wrong"; fail=$((fail+1))
 fi
